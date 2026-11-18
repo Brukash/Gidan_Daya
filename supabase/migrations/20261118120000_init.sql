@@ -3,8 +3,9 @@
 -- trail and a configurable allocation rule. Access rules live in the database
 -- (RLS), not in the browser.
 --
--- NOTE: this migration has never been executed. No Supabase project exists for
--- this workspace, so nothing here has been run or tested against Postgres.
+-- NOTE: applied and verified against the local stack (`supabase db reset`).
+-- It has not yet been run against a hosted project: the free plan on this
+-- account is at its two-active-project limit.
 
 create type public.member_role as enum ('member', 'admin');
 create type public.cadre as enum ('Clerk', 'Executive Officer', 'Assistant Manager', 'Manager', 'Senior Manager');

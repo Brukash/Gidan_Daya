@@ -43,3 +43,6 @@ design/shots/
 .vercel
 .env*
 !.env.example
+
+# local secrets (never commit)
+.secrets/
