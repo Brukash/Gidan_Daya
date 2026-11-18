@@ -1,165 +1,146 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useSession } from '../auth/session';
-import { ErrorBlock, Kpi, LoadingBlock, PageHeader, Passbook, ProjectPill, SubscriptionPill } from '../components/ui';
-import { listProjects, listSubscriptions } from '../data/repository';
-import { SAMPLE_CYCLE, SAMPLE_MONTHLY } from '../data/seed';
-import { describeProject, fundingPercent, remainingUnits, sumBy } from '../lib/funding';
-import { daysUntil, formatCompactNaira, formatDate, formatNaira, plural } from '../lib/format';
-
-function MonthlyChart() {
-  const max = Math.max(...SAMPLE_MONTHLY.map((point) => point.amount));
-  const description = SAMPLE_MONTHLY.map((point) => `${point.month}: ${formatNaira(point.amount)}`).join(', ');
-
-  return (
-    <div>
-      <div className="flex h-36 items-end gap-2 sm:gap-3" role="img" aria-label={`Commitments by month. ${description}`}>
-        {SAMPLE_MONTHLY.map((point) => {
-          const height = Math.max(6, Math.round((point.amount / max) * 100));
-          return (
-            <div key={point.month} className="flex h-full flex-1 flex-col justify-end gap-1.5">
-              <span className="num text-center text-[0.625rem] text-ink-soft">{formatCompactNaira(point.amount)}</span>
-              <div className="relative w-full overflow-hidden rounded-t-[2px] bg-sage/70" style={{ height: `${height}%` }}>
-                <div className="absolute inset-x-0 bottom-0 top-0 bg-forest/85" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex gap-2 sm:gap-3">
-        {SAMPLE_MONTHLY.map((point) => (
-          <span key={point.month} className="num flex-1 text-center text-[0.6875rem] uppercase tracking-[0.06em] text-ink-soft">
-            {point.month}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
+import {
+  ApplicationPill,
+  ErrorBlock,
+  Kpi,
+  LoadingBlock,
+  PageHeader,
+  Passbook,
+  TierPill,
+} from '../components/ui';
+import { listApplications, listTiers } from '../data/repository';
+import { SCHEME, SITE_VISIT } from '../data/seed';
+import {
+  allocationPercent,
+  describeTier,
+  milestoneLabel,
+  outstandingFor,
+  priceForPlot,
+  remainingPlots,
+  schemeTotals,
+  sumBy,
+} from '../lib/allocations';
+import { daysUntil, formatCompactNaira, formatDate, formatNaira, formatSqm, plural } from '../lib/format';
 
 export function Overview() {
   const { user } = useSession();
-  const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: listProjects });
-  const allSubsQuery = useQuery({ queryKey: ['subscriptions', 'all'], queryFn: () => listSubscriptions() });
-  const mySubsQuery = useQuery({
-    queryKey: ['subscriptions', user?.id ?? 'anonymous'],
-    queryFn: () => listSubscriptions(user?.id),
+  const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers });
+  const mineQuery = useQuery({
+    queryKey: ['applications', user?.id ?? 'anonymous'],
+    queryFn: () => listApplications(user?.id),
     enabled: Boolean(user),
   });
+  const allQuery = useQuery({ queryKey: ['applications', 'all'], queryFn: () => listApplications() });
 
-  if (projectsQuery.isLoading || allSubsQuery.isLoading) return <LoadingBlock />;
-  if (projectsQuery.isError) return <ErrorBlock message={projectsQuery.error.message} onRetry={() => void projectsQuery.refetch()} />;
+  if (tiersQuery.isLoading || mineQuery.isLoading) return <LoadingBlock />;
+  if (tiersQuery.isError) {
+    return <ErrorBlock message={tiersQuery.error.message} onRetry={() => void tiersQuery.refetch()} />;
+  }
 
-  const projects = projectsQuery.data ?? [];
-  const allSubs = allSubsQuery.data ?? [];
-  const mySubs = mySubsQuery.data ?? [];
+  const tiers = tiersQuery.data ?? [];
+  const mine = mineQuery.data ?? [];
+  const all = allQuery.data ?? [];
+  const totals = schemeTotals(tiers, SCHEME);
 
-  const committed = sumBy(allSubs, (item) => item.amount);
-  const collected = sumBy(allSubs, (item) => item.paid);
-  const open = projects.filter((project) => {
-    const state = describeProject(project).state;
-    return state === 'open' || state === 'closing';
-  });
+  const latest = mine[0];
+  const collected = sumBy(all, (item) => item.paid);
+  const committed = sumBy(all, (item) => item.amount);
 
-  const mine = sumBy(mySubs, (item) => item.amount);
-  const minePaid = sumBy(mySubs, (item) => item.paid);
-
-  const upcoming = mySubs
-    .filter((item) => item.nextDueOn !== null)
-    .sort((a, b) => (a.nextDueOn ?? '').localeCompare(b.nextDueOn ?? ''));
-  const nextDue = upcoming[0];
-
-  const dueSoon = allSubs
-    .filter((item) => item.status === 'due' && item.nextDueOn && daysUntil(item.nextDueOn) <= 30)
-    .slice(0, 3);
-
-  const recent = allSubs.slice(0, 4);
+  const milestones = [
+    { label: 'Applications close', date: SCHEME.closesOn, note: 'No applications after this date' },
+    { label: '50% deposit due', date: SCHEME.depositDueOn, note: 'Half of the plot price' },
+    { label: 'Balance due', date: SCHEME.balanceDueOn, note: 'Temporary allocation after this' },
+  ];
 
   return (
     <div className="space-y-7">
       <PageHeader
-        eyebrow={`Cycle ${SAMPLE_CYCLE.label}`}
+        eyebrow="Gidan Daya · CBN Staff Cooperative Estate"
         title={`Good to see you, ${user?.name.split(' ')[0] ?? 'member'}.`}
-        description={`Subscriptions for this cycle close ${formatDate(SAMPLE_CYCLE.closesOn)}. Figures below cover the whole cooperative's book.`}
+        description={`Plots from 200 to 500 sqm at ${formatNaira(SCHEME.pricePerSqm)} per sqm. Applications close ${formatDate(SCHEME.closesOn)}.`}
         actions={
-          <Link to="/app/projects" className="btn btn-primary">
-            Subscribe to a project
+          <Link to="/app/apply" className="btn btn-primary">
+            Apply for a plot
           </Link>
         }
       />
 
       <section aria-label="Key figures" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
-          label="Committed this cycle"
-          value={formatCompactNaira(committed)}
-          context={`${allSubs.length} ${plural(allSubs.length, 'subscription')} across ${projects.length} projects`}
+          label="Plots available"
+          value={String(totals.remaining)}
+          context={`of ${totals.plots} plots in this scheme`}
         />
         <Kpi
-          label="Collected"
-          value={formatCompactNaira(collected)}
-          context={`${formatNaira(Math.max(0, committed - collected))} still outstanding`}
+          label="Allocated"
+          value={`${allocationPercent(totals.allocated, totals.plots)}%`}
+          context={`${totals.allocated} plots taken`}
         />
         <Kpi
-          label="Open projects"
-          value={String(open.length)}
-          context={open.length === 1 ? 'One project accepting units' : `${open.length} projects accepting units`}
+          label="Your application"
+          value={latest ? formatSqm(latest.sizeSqm) : 'None yet'}
+          context={latest ? latest.reference : 'Start one before 30 Dec 2026'}
         />
         <Kpi
-          label="Your next installment"
-          value={nextDue?.nextDueOn ? formatCompactNaira(Math.max(0, nextDue.amount - nextDue.paid)) : '—'}
-          context={nextDue?.nextDueOn ? `Due ${formatDate(nextDue.nextDueOn)}` : 'Nothing scheduled'}
+          label="Next milestone"
+          value={latest ? formatCompactNaira(outstandingFor(latest)) : formatCompactNaira(20_000)}
+          context={latest ? milestoneLabel(latest) : 'Application fee'}
         />
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.55fr_1fr]">
-        <section aria-labelledby="funding-heading" className="card-raised overflow-hidden">
+        <section aria-labelledby="availability-heading" className="card-raised overflow-hidden">
           <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-4 py-3">
             <div>
-              <h2 id="funding-heading" className="text-[1.05rem]">
-                Funding by project
+              <h2 id="availability-heading" className="text-[1.05rem]">
+                Plot availability
               </h2>
-              <p className="text-xs text-ink-soft">Units taken against units offered this cycle.</p>
+              <p className="text-xs text-ink-soft">Allocation is first-come, by payment confirmation.</p>
             </div>
-            <Link to="/app/projects" className="text-sm font-medium text-forest underline-offset-4 hover:underline">
-              All projects
+            <Link to="/app/plots" className="text-sm font-medium text-forest underline-offset-4 hover:underline">
+              All sizes
             </Link>
           </div>
 
           <div className="hidden overflow-x-auto sm:block">
             <table className="ledger">
-              <caption className="sr-only">Funding progress by project</caption>
+              <caption className="sr-only">Plot sizes and availability</caption>
               <thead>
                 <tr>
-                  <th scope="col">Project</th>
-                  <th scope="col">Unit price</th>
+                  <th scope="col">Plot size</th>
+                  <th scope="col">Plot price</th>
                   <th scope="col" className="w-[30%]">
-                    Funding
+                    Allocated
                   </th>
                   <th scope="col">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project) => {
-                  const status = describeProject(project);
+                {tiers.map((tier) => {
+                  const status = describeTier(tier, SCHEME.closesOn);
                   return (
-                    <tr key={project.id}>
+                    <tr key={tier.id}>
                       <td>
-                        <Link to={`/app/projects/${project.id}`} className="block hover:underline">
-                          <span className="num text-[0.625rem] font-semibold uppercase tracking-[0.09em] text-ink-soft">
-                            {project.code}
+                        <Link to={`/app/apply?size=${tier.sizeSqm}`} className="block hover:underline">
+                          <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
+                          <span className="num text-xs text-ink-soft">
+                            {remainingPlots(tier)} of {tier.totalPlots} left
                           </span>
-                          <span className="block font-medium">{project.name}</span>
                         </Link>
                       </td>
-                      <td className="num whitespace-nowrap text-ink-soft">{formatNaira(project.unitPrice)}</td>
+                      <td className="num whitespace-nowrap">
+                        {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))}
+                      </td>
                       <td className="min-w-[9rem]">
-                        <Passbook unitsTaken={project.unitsTaken} totalUnits={project.totalUnits} />
+                        <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                         <span className="num mt-1 block text-xs text-ink-soft">
-                          {fundingPercent(project.unitsTaken, project.totalUnits)}% · {remainingUnits(project)} left
+                          {allocationPercent(tier.allocated, tier.totalPlots)}% taken
                         </span>
                       </td>
                       <td>
-                        <ProjectPill status={status} />
+                        <TierPill status={status} />
                       </td>
                     </tr>
                   );
@@ -169,120 +150,165 @@ export function Overview() {
           </div>
 
           <ul className="divide-y divide-line sm:hidden">
-            {projects.map((project) => (
-              <li key={project.id} className="px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <Link to={`/app/projects/${project.id}`} className="min-w-0">
-                    <span className="num block text-[0.625rem] font-semibold uppercase tracking-[0.09em] text-ink-soft">
-                      {project.code}
-                    </span>
-                    <span className="block font-medium leading-snug">{project.name}</span>
-                  </Link>
-                  <ProjectPill status={describeProject(project)} />
-                </div>
-                <div className="mt-2">
-                  <Passbook unitsTaken={project.unitsTaken} totalUnits={project.totalUnits} />
-                  <p className="num mt-1 text-xs text-ink-soft">
-                    {fundingPercent(project.unitsTaken, project.totalUnits)}% · {formatNaira(project.unitPrice)} per unit
-                    · {remainingUnits(project)} left
-                  </p>
-                </div>
-              </li>
-            ))}
+            {tiers.map((tier) => {
+              const status = describeTier(tier, SCHEME.closesOn);
+              return (
+                <li key={tier.id} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <Link to={`/app/apply?size=${tier.sizeSqm}`} className="min-w-0">
+                      <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
+                      <span className="num block text-xs text-ink-soft">
+                        {remainingPlots(tier)} of {tier.totalPlots} left
+                      </span>
+                    </Link>
+                    <TierPill status={status} />
+                  </div>
+                  <div className="mt-2">
+                    <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
+                    <p className="num mt-1 text-xs text-ink-soft">
+                      {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))} per plot
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
 
         <div className="space-y-5">
           <section aria-labelledby="mine-heading" className="card-raised p-4">
             <h2 id="mine-heading" className="text-[1.05rem]">
-              Your commitments
+              Your application
             </h2>
-            <p className="num mt-2 font-display text-[1.75rem] leading-none text-forest">{formatNaira(mine)}</p>
-            <p className="mt-1.5 text-xs text-ink-soft">
-              {formatNaira(minePaid)} paid · {formatNaira(Math.max(0, mine - minePaid))} outstanding
-            </p>
-            <ul className="mt-3 divide-y divide-line border-t border-line">
-              {mySubs.slice(0, 3).map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{item.projectName}</span>
-                    <span className="num block text-xs text-ink-soft">
-                      {item.reference} · {item.units} {plural(item.units, 'unit')}
-                    </span>
-                  </span>
-                  <SubscriptionPill status={item.status} />
-                </li>
-              ))}
-              {mySubs.length === 0 ? <li className="py-3 text-sm text-ink-soft">No subscriptions yet.</li> : null}
-            </ul>
-            <Link
-              to="/app/subscriptions"
-              className="mt-3 inline-block text-sm font-medium text-forest underline-offset-4 hover:underline"
-            >
-              Open my subscriptions →
-            </Link>
+            {latest ? (
+              <>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className="num font-display text-[1.6rem] leading-none text-forest">{formatSqm(latest.sizeSqm)}</p>
+                  <ApplicationPill status={latest.status} />
+                </div>
+                <p className="num mt-1.5 text-xs text-ink-soft">
+                  {latest.reference} · {latest.houseDesign === 'detached' ? 'Detached duplex' : 'Semi-detached duplex'}
+                </p>
+                <dl className="mt-3 border-t border-line pt-3 text-sm">
+                  <div className="flex items-baseline justify-between gap-3 py-1">
+                    <dt className="text-ink-soft">Plot price</dt>
+                    <dd className="num">{formatNaira(latest.amount)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3 py-1">
+                    <dt className="text-ink-soft">Paid</dt>
+                    <dd className="num">{formatNaira(latest.paid)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3 py-1">
+                    <dt className="text-ink-soft">Outstanding</dt>
+                    <dd className="num font-semibold">{formatNaira(outstandingFor(latest))}</dd>
+                  </div>
+                </dl>
+                <Link
+                  to="/app/application"
+                  className="mt-3 inline-block text-sm font-medium text-forest underline-offset-4 hover:underline"
+                >
+                  Open my application →
+                </Link>
+              </>
+            ) : (
+              <div className="mt-3">
+                <p className="text-sm text-ink-soft">
+                  No application on record for your membership number yet. Choose a plot size and pay the ₦20,000 fee
+                  to start.
+                </p>
+                <Link to="/app/apply" className="btn btn-forest mt-3 w-full text-sm">
+                  Apply for a plot
+                </Link>
+              </div>
+            )}
           </section>
 
-          <section aria-labelledby="due-heading" className="card p-4">
-            <h2 id="due-heading" className="text-[1.05rem]">
-              Due within 30 days
+          <section aria-labelledby="dates-heading" className="card p-4">
+            <h2 id="dates-heading" className="text-[1.05rem]">
+              Key dates
             </h2>
-            {dueSoon.length === 0 ? (
-              <p className="mt-2 text-sm text-ink-soft">Nothing due in the next 30 days.</p>
-            ) : (
-              <ul className="mt-2 divide-y divide-line">
-                {dueSoon.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{item.memberName}</span>
-                      <span className="num block text-xs text-ink-soft">{item.reference}</span>
+            <ul className="mt-2 divide-y divide-line">
+              {milestones.map((milestone) => {
+                const days = daysUntil(milestone.date);
+                return (
+                  <li key={milestone.label} className="flex items-start justify-between gap-3 py-2.5 text-sm">
+                    <span>
+                      <span className="block font-medium">{milestone.label}</span>
+                      <span className="text-xs text-ink-soft">{milestone.note}</span>
                     </span>
                     <span className="num shrink-0 text-right">
-                      <span className="block">{formatNaira(item.amount - item.paid)}</span>
-                      <span className="block text-xs text-clay-deep">
-                        {item.nextDueOn ? formatDate(item.nextDueOn) : '—'}
+                      <span className="block">{formatDate(milestone.date)}</span>
+                      <span className={`block text-xs ${days < 0 ? 'text-clay-deep' : 'text-ink-soft'}`}>
+                        {days < 0 ? `${Math.abs(days)} days ago` : `in ${days} days`}
                       </span>
                     </span>
                   </li>
-                ))}
-              </ul>
-            )}
+                );
+              })}
+            </ul>
+            <p className="mt-3 border-t border-line pt-3 text-xs text-ink-soft">
+              Site visits {formatDate(SITE_VISIT.dates[0])} and {formatDate(SITE_VISIT.dates[1])} at {SITE_VISIT.time}.
+            </p>
           </section>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.55fr_1fr]">
-        <section aria-labelledby="chart-heading" className="card-raised p-4">
-          <div className="mb-4 flex items-end justify-between gap-3">
-            <div>
-              <h2 id="chart-heading" className="text-[1.05rem]">
-                Commitments recorded by month
-              </h2>
-              <p className="text-xs text-ink-soft">Naira committed to projects, June to November 2026.</p>
-            </div>
-            <span className="rounded-full bg-gold-tint px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-[#6f4d12]">
-              Sample data
-            </span>
+        <section aria-labelledby="register-heading" className="card-raised overflow-hidden">
+          <div className="border-b border-line px-4 py-3">
+            <h2 id="register-heading" className="text-[1.05rem]">
+              Recent applications
+            </h2>
+            <p className="text-xs text-ink-soft">Sample applicants, ordered newest first.</p>
           </div>
-          <MonthlyChart />
-        </section>
-
-        <section aria-labelledby="activity-heading" className="card p-4">
-          <h2 id="activity-heading" className="text-[1.05rem]">
-            Recent activity
-          </h2>
-          <ul className="mt-2 divide-y divide-line">
-            {recent.map((item) => (
-              <li key={item.id} className="py-2.5 text-sm">
-                <p className="font-medium">
-                  {item.memberName || 'Member'} subscribed {item.units} {plural(item.units, 'unit')}
-                </p>
-                <p className="num text-xs text-ink-soft">
-                  {item.projectName} · {formatNaira(item.amount)} · {formatDate(item.createdAt)}
-                </p>
+          <ul className="divide-y divide-line">
+            {all.slice(0, 5).map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{item.memberName}</p>
+                  <p className="num text-xs text-ink-soft">
+                    {formatSqm(item.sizeSqm)} · {item.reference} · {formatDate(item.createdAt)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="num text-sm">{formatNaira(item.amount)}</span>
+                  <ApplicationPill status={item.status} />
+                </div>
               </li>
             ))}
           </ul>
+        </section>
+
+        <section aria-labelledby="book-heading" className="card p-4">
+          <h2 id="book-heading" className="text-[1.05rem]">
+            The scheme in figures
+          </h2>
+          <dl className="mt-2 divide-y divide-line text-sm">
+            <div className="flex items-baseline justify-between gap-3 py-2">
+              <dt className="text-ink-soft">Plots</dt>
+              <dd className="num">{totals.plots}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 py-2">
+              <dt className="text-ink-soft">Square metres</dt>
+              <dd className="num">{totals.squareMetres.toLocaleString('en-NG')}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 py-2">
+              <dt className="text-ink-soft">Value at published rate</dt>
+              <dd className="num">{formatCompactNaira(totals.value)}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 py-2">
+              <dt className="text-ink-soft">Committed by applicants</dt>
+              <dd className="num">{formatCompactNaira(committed)}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 py-2">
+              <dt className="text-ink-soft">Collected</dt>
+              <dd className="num">{formatCompactNaira(collected)}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-ink-soft">
+            {all.length} {plural(all.length, 'application')} on record. Figures are sample data until Supabase is
+            connected.
+          </p>
         </section>
       </div>
     </div>

@@ -11,15 +11,17 @@ const SESSION = {
   name: 'Aisha Bello (secretariat)',
   email: 'admin@coop.example',
   role: 'admin',
+  memberNumber: 'CBN/2019/0417',
+  cadre: 'Assistant Manager',
 };
 
 const ROUTES = [
   { name: 'landing', path: '/', auth: false },
   { name: 'signin', path: '/signin', auth: false },
   { name: 'overview', path: '/app', auth: true },
-  { name: 'projects', path: '/app/projects', auth: true },
-  { name: 'project-detail', path: '/app/projects/p-housing', auth: true },
-  { name: 'subscriptions', path: '/app/subscriptions', auth: true },
+  { name: 'plots', path: '/app/plots', auth: true },
+  { name: 'apply', path: '/app/apply?size=400', auth: true },
+  { name: 'application', path: '/app/application', auth: true },
   { name: 'members', path: '/app/members', auth: true },
   { name: 'reports', path: '/app/reports', auth: true },
 ];

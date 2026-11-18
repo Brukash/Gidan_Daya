@@ -63,7 +63,7 @@ export function SignIn() {
 
         <div className="mt-12 w-full max-w-md lg:mt-20">
           <p className="eyebrow">Member access</p>
-          <h1 className="mt-3 text-[2rem] leading-[1.05] sm:text-[2.4rem]">Sign in to your ledger.</h1>
+          <h1 className="mt-3 text-[2rem] leading-[1.05] sm:text-[2.4rem]">Sign in to your application.</h1>
           <p className="mt-3 text-[0.9375rem] text-ink-soft">
             {isSupabaseConfigured
               ? 'Use the email address on your cooperative record.'
@@ -145,8 +145,8 @@ export function SignIn() {
                 </Button>
               </div>
               <p className="mt-2 text-xs text-ink-soft">
-                Both use the password <span className="num">gidandaya</span>. The secretariat address opens the member
-                register and cycle exports.
+                Both use the password <span className="num">gidandaya</span>. The secretariat address opens the applicant
+                register, payment recording and the allocation report.
               </p>
             </div>
           ) : null}
@@ -154,23 +154,23 @@ export function SignIn() {
 
         <p className="mt-auto pt-10 text-xs text-ink-soft">
           <Link to="/" className="hover:underline">
-            ← Back to the project page
+            ← Back to the scheme page
           </Link>
         </p>
       </main>
 
       <aside className="hidden bg-forest px-10 py-14 text-paper lg:flex lg:flex-col lg:justify-between">
         <div>
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-gold">Inside the ledger</p>
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-gold">Inside the application</p>
           <h2 className="mt-4 text-[1.9rem] leading-tight text-paper">
-            Your position, and the cooperative's, without a spreadsheet between them.
+            One estate, four plot sizes, and a record of every naira.
           </h2>
           <ul className="mt-8 space-y-4 border-t border-paper/20 pt-6 text-sm">
             {[
-              'Funding progress on every open project, in units and naira',
-              'A commitment record with reference, units and balance',
-              'Installment dates, so nothing is missed by accident',
-              'A statement you can download as PDF, and the cycle as Excel',
+              'Live availability for 200, 300, 400 and 500 sqm plots',
+              'A plot application with reference, price and balance',
+              'The deposit and balance dates, with what is still owed',
+              'A statement you can download as PDF; the register as Excel',
             ].map((item) => (
               <li key={item} className="flex gap-3 text-paper/85">
                 <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />

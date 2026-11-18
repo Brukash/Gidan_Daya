@@ -48,3 +48,11 @@ export function daysUntil(iso: string, from: Date = new Date()): number {
 export function plural(count: number, singular: string, pluralLabel?: string): string {
   return count === 1 ? singular : (pluralLabel ?? `${singular}s`);
 }
+
+export function formatSqm(sizeSqm: number): string {
+  return `${sizeSqm.toLocaleString('en-NG')} sqm`;
+}
+
+export function formatMemberNumber(value: string): string {
+  return value.trim().toUpperCase();
+}

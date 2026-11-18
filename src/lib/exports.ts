@@ -1,6 +1,14 @@
-import type { Member, Project, Subscription } from '../data/types';
-import { describeProject, fundingPercent, remainingUnits } from './funding';
-import { formatDate, formatNaira } from './format';
+import type { Application, Member, PlotTier } from '../data/types';
+import { SCHEME } from '../data/seed';
+import {
+  allocationPercent,
+  depositFor,
+  hasPriority,
+  outstandingFor,
+  remainingPlots,
+  STATUS_LABEL,
+} from './allocations';
+import { formatDate, formatNaira, formatSqm } from './format';
 
 const FOREST: [number, number, number] = [18, 54, 40];
 const CLAY: [number, number, number] = [168, 69, 42];
@@ -29,7 +37,7 @@ function pdfHeader(doc: import('jspdf').jsPDF, title: string, subtitle: string):
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(74, 87, 81);
-  doc.text('CBN Cooperative · project subscriptions', 40, 62);
+  doc.text('CBN Staff Multipurpose Cooperative Society Estate · plot subscriptions', 40, 62);
 
   doc.setDrawColor(220, 213, 196);
   doc.line(40, 72, 555, 72);
@@ -59,67 +67,178 @@ function pdfFooter(doc: import('jspdf').jsPDF, note: string): void {
   }
 }
 
-export async function exportStatementPdf(subscriptions: Subscription[], memberName: string): Promise<void> {
+export async function exportApplicationPdf(application: Application): Promise<void> {
   const { jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');
 
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const name = memberName;
   const startY = pdfHeader(
     doc,
-    'Subscription statement',
-    `${name} · issued ${formatDate(new Date().toISOString())} · sample data unless connected to Supabase`,
+    'Plot application statement',
+    `${application.memberName} · ${application.memberNumber} · issued ${formatDate(new Date().toISOString())}`,
   );
-
-  const committed = subscriptions.reduce((sum, item) => sum + item.amount, 0);
-  const paid = subscriptions.reduce((sum, item) => sum + item.paid, 0);
 
   autoTable(doc, {
     startY,
-    head: [['Reference', 'Project', 'Units', 'Committed', 'Paid', 'Outstanding', 'Next due', 'Status']],
-    body: subscriptions.map((item) => [
-      item.reference,
-      item.projectName,
-      String(item.units),
-      formatNaira(item.amount),
-      formatNaira(item.paid),
-      formatNaira(Math.max(0, item.amount - item.paid)),
-      item.nextDueOn ? formatDate(item.nextDueOn) : '—',
-      item.status === 'due' ? 'Payment due' : item.status === 'active' ? 'Active' : 'Completed',
-    ]),
-    styles: { font: 'helvetica', fontSize: 8, cellPadding: 6, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
-    headStyles: { fillColor: FOREST, textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 7.5 },
-    alternateRowStyles: { fillColor: [251, 248, 241] },
-    columnStyles: {
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-    },
+    head: [['Application', 'Detail']],
+    body: [
+      ['Reference', application.reference],
+      ['Plot size', formatSqm(application.sizeSqm)],
+      ['House design', application.houseDesign === 'detached' ? '4-bedroom detached duplex' : '4-bedroom semi-detached duplex'],
+      ['Rate', `${formatNaira(SCHEME.pricePerSqm)} per sqm, infrastructure inclusive`],
+      ['Plot price', formatNaira(application.amount)],
+      ['Application fee', `${formatNaira(SCHEME.applicationFee)} non-refundable — paid`],
+      ['Cadre', application.cadre],
+      ['Status', STATUS_LABEL[application.status]],
+    ],
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: 6, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
+    headStyles: { fillColor: FOREST, textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 8 },
+    columnStyles: { 0: { cellWidth: 150, fontStyle: 'bold' } },
     margin: { left: 40, right: 40 },
   });
 
-  const afterTable = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? startY;
-  let cursor = afterTable + 24;
+  const afterSummary = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? startY;
+
+  autoTable(doc, {
+    startY: afterSummary + 18,
+    head: [['Payment', 'Due', 'Amount', 'Paid']],
+    body: [
+      [
+        'Application fee',
+        'On application',
+        formatNaira(SCHEME.applicationFee),
+        application.feePaid ? 'Paid' : 'Outstanding',
+      ],
+      [
+        '50% deposit',
+        formatDate(SCHEME.depositDueOn),
+        formatNaira(depositFor(application.amount)),
+        formatNaira(Math.min(application.paid, depositFor(application.amount))),
+      ],
+      [
+        'Balance',
+        formatDate(SCHEME.balanceDueOn),
+        formatNaira(application.amount - depositFor(application.amount)),
+        formatNaira(Math.max(0, application.paid - depositFor(application.amount))),
+      ],
+    ],
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 6, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
+    headStyles: { fillColor: [28, 74, 54], textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 8 },
+    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
+    margin: { left: 40, right: 40 },
+  });
+
+  const afterSchedule = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? afterSummary;
+  let cursor = afterSchedule + 26;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
   doc.setTextColor(...CLAY);
-  doc.text('Totals', 40, cursor);
+  doc.text('Position', 40, cursor);
   cursor += 14;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(26, 36, 32);
-  doc.text(`Committed ${formatNaira(committed)}`, 40, cursor);
-  doc.text(`Paid ${formatNaira(paid)}`, 200, cursor);
-  doc.text(`Outstanding ${formatNaira(Math.max(0, committed - paid))}`, 340, cursor);
+  doc.text(`Paid ${formatNaira(application.paid)}`, 40, cursor);
+  doc.text(`Outstanding ${formatNaira(outstandingFor(application))}`, 200, cursor);
 
-  pdfFooter(doc, 'Gidan Daya · figures are sample data unless this deployment is connected to Supabase.');
-  doc.save(`gidan-daya-statement-${stamp()}.pdf`);
+  cursor += 26;
+  doc.setFontSize(8);
+  doc.setTextColor(74, 87, 81);
+  doc.text(
+    'Refunds are only on written request, after the plot is resold, subject to penalties of up to 5%;',
+    40,
+    cursor,
+  );
+  doc.text('infrastructure funds already applied are non-refundable. Allocation is first-come by payment confirmation.', 40, cursor + 11);
+  doc.text('Title perfection costs are borne by the subscriber. Figures are sample data unless connected to Supabase.', 40, cursor + 22);
+
+  pdfFooter(doc, 'Gidan Daya · CBN Staff Multipurpose Cooperative Society Estate.');
+  doc.save(`gidan-daya-application-${application.reference}.pdf`);
 }
 
-export async function exportCycleXlsx(
-  projects: Project[],
-  subscriptions: Subscription[],
+export async function exportRegisterPdf(applications: Application[], tiers: PlotTier[]): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const { default: autoTable } = await import('jspdf-autotable');
+
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
+  const width = doc.internal.pageSize.getWidth();
+  const margin = 40;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(...FOREST);
+  doc.text('Gidan Daya', margin, 44);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(74, 87, 81);
+  doc.text('CBN Staff Multipurpose Cooperative Society Estate · plot register', margin, 58);
+  doc.text(`Generated ${formatDate(new Date().toISOString())}`, width - margin, 58, { align: 'right' });
+
+  doc.setDrawColor(220, 213, 196);
+  doc.line(margin, 68, width - margin, 68);
+
+  autoTable(doc, {
+    startY: 82,
+    head: [['Plot size', 'Plots', 'Allocated', 'Remaining', 'Price', '50% deposit']],
+    body: tiers.map((tier) => {
+      const price = tier.sizeSqm * SCHEME.pricePerSqm;
+      return [
+        formatSqm(tier.sizeSqm),
+        tier.totalPlots,
+        tier.allocated,
+        remainingPlots(tier),
+        formatNaira(price),
+        formatNaira(depositFor(price)),
+      ];
+    }),
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 5, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
+    headStyles: { fillColor: FOREST, textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 8 },
+    columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' } },
+    margin: { left: margin, right: margin },
+  });
+
+  const afterTiers = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 82;
+
+  autoTable(doc, {
+    startY: afterTiers + 20,
+    head: [['Reference', 'Applicant', 'Cooperative ID', 'Cadre', 'Plot', 'Price', 'Paid', 'Outstanding', 'Status', 'Applied']],
+    body: applications.map((item) => [
+      item.reference,
+      item.memberName,
+      item.memberNumber,
+      item.cadre,
+      formatSqm(item.sizeSqm),
+      formatNaira(item.amount),
+      formatNaira(item.paid),
+      formatNaira(outstandingFor(item)),
+      STATUS_LABEL[item.status],
+      formatDate(item.createdAt),
+    ]),
+    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 4.5, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
+    headStyles: { fillColor: [28, 74, 54], textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 7.5 },
+    columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+    margin: { left: margin, right: margin },
+    didDrawPage: () => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(122, 132, 126);
+      doc.text('Sample data unless connected to Supabase. Allocation is first-come by payment confirmation.', margin, doc.internal.pageSize.getHeight() - 24);
+      doc.text(
+        `Page ${doc.getNumberOfPages()}`,
+        width - margin,
+        doc.internal.pageSize.getHeight() - 24,
+        { align: 'right' },
+      );
+    },
+  });
+
+  doc.save(`gidan-daya-register-${stamp()}.pdf`);
+}
+
+export async function exportAllocationXlsx(
+  tiers: PlotTier[],
+  applications: Application[],
   members: Member[],
 ): Promise<void> {
   const ExcelJS = await import('exceljs');
@@ -127,86 +246,88 @@ export async function exportCycleXlsx(
   workbook.creator = 'Gidan Daya';
   workbook.created = new Date();
 
-  const projectSheet = workbook.addWorksheet('Projects', {
+  const tierSheet = workbook.addWorksheet('Plot availability', {
     views: [{ state: 'frozen', ySplit: 1 }],
   });
-  projectSheet.columns = [
-    { header: 'Code', key: 'code', width: 10 },
-    { header: 'Project', key: 'name', width: 38 },
-    { header: 'Category', key: 'category', width: 14 },
-    { header: 'Unit price (NGN)', key: 'unitPrice', width: 18, style: { numFmt: '#,##0' } },
-    { header: 'Total units', key: 'totalUnits', width: 12 },
-    { header: 'Units taken', key: 'unitsTaken', width: 12 },
-    { header: 'Units left', key: 'unitsLeft', width: 11 },
-    { header: 'Funded %', key: 'percent', width: 10 },
-    { header: 'Closes', key: 'closesOn', width: 13 },
-    { header: 'Status', key: 'status', width: 18 },
+  tierSheet.columns = [
+    { header: 'Plot size (sqm)', key: 'size', width: 16 },
+    { header: 'Plots', key: 'total', width: 9 },
+    { header: 'Allocated', key: 'allocated', width: 12 },
+    { header: 'Remaining', key: 'remaining', width: 12 },
+    { header: 'Allocated %', key: 'percent', width: 12 },
+    { header: 'Price (NGN)', key: 'price', width: 16, style: { numFmt: '#,##0' } },
+    { header: '50% deposit (NGN)', key: 'deposit', width: 18, style: { numFmt: '#,##0' } },
   ];
-
-  for (const project of projects) {
-    projectSheet.addRow({
-      code: project.code,
-      name: project.name,
-      category: project.category,
-      unitPrice: project.unitPrice,
-      totalUnits: project.totalUnits,
-      unitsTaken: project.unitsTaken,
-      unitsLeft: remainingUnits(project),
-      percent: fundingPercent(project.unitsTaken, project.totalUnits),
-      closesOn: formatDate(project.closesOn),
-      status: describeProject(project).label,
+  for (const tier of tiers) {
+    const price = tier.sizeSqm * SCHEME.pricePerSqm;
+    tierSheet.addRow({
+      size: tier.sizeSqm,
+      total: tier.totalPlots,
+      allocated: tier.allocated,
+      remaining: remainingPlots(tier),
+      percent: allocationPercent(tier.allocated, tier.totalPlots),
+      price,
+      deposit: depositFor(price),
     });
   }
 
-  const subscriptionSheet = workbook.addWorksheet('Subscriptions', {
+  const applicationSheet = workbook.addWorksheet('Applications', {
     views: [{ state: 'frozen', ySplit: 1 }],
   });
-  subscriptionSheet.columns = [
-    { header: 'Reference', key: 'reference', width: 14 },
-    { header: 'Project', key: 'projectName', width: 38 },
-    { header: 'Member', key: 'memberName', width: 24 },
-    { header: 'Units', key: 'units', width: 8 },
-    { header: 'Committed (NGN)', key: 'amount', width: 18, style: { numFmt: '#,##0' } },
-    { header: 'Paid (NGN)', key: 'paid', width: 16, style: { numFmt: '#,##0' } },
+  applicationSheet.columns = [
+    { header: 'Reference', key: 'reference', width: 15 },
+    { header: 'Applicant', key: 'memberName', width: 24 },
+    { header: 'Cooperative ID', key: 'memberNumber', width: 18 },
+    { header: 'Cadre', key: 'cadre', width: 18 },
+    { header: 'Plot (sqm)', key: 'sizeSqm', width: 11 },
+    { header: 'Design', key: 'design', width: 26 },
+    { header: 'Price (NGN)', key: 'amount', width: 15, style: { numFmt: '#,##0' } },
+    { header: 'Paid (NGN)', key: 'paid', width: 15, style: { numFmt: '#,##0' } },
     { header: 'Outstanding (NGN)', key: 'outstanding', width: 18, style: { numFmt: '#,##0' } },
-    { header: 'Next due', key: 'nextDue', width: 13 },
-    { header: 'Status', key: 'status', width: 14 },
+    { header: 'Cadre priority', key: 'priority', width: 14 },
+    { header: 'Status', key: 'status', width: 20 },
+    { header: 'Applied', key: 'createdAt', width: 13 },
   ];
-  for (const item of subscriptions) {
-    subscriptionSheet.addRow({
+  for (const item of applications) {
+    applicationSheet.addRow({
       reference: item.reference,
-      projectName: item.projectName,
       memberName: item.memberName,
-      units: item.units,
+      memberNumber: item.memberNumber,
+      cadre: item.cadre,
+      sizeSqm: item.sizeSqm,
+      design: item.houseDesign === 'detached' ? 'Detached duplex' : 'Semi-detached duplex',
       amount: item.amount,
       paid: item.paid,
-      outstanding: Math.max(0, item.amount - item.paid),
-      nextDue: item.nextDueOn ? formatDate(item.nextDueOn) : '',
-      status: item.status === 'due' ? 'Payment due' : item.status === 'active' ? 'Active' : 'Completed',
+      outstanding: outstandingFor(item),
+      priority: hasPriority(item.cadre) ? 'Yes' : 'No',
+      status: STATUS_LABEL[item.status],
+      createdAt: formatDate(item.createdAt),
     });
   }
 
-  const memberSheet = workbook.addWorksheet('Members');
+  const memberSheet = workbook.addWorksheet('Applicants');
   memberSheet.columns = [
-    { header: 'Member', key: 'name', width: 26 },
-    { header: 'Email', key: 'email', width: 30 },
-    { header: 'Role', key: 'role', width: 12 },
+    { header: 'Applicant', key: 'name', width: 26 },
+    { header: 'Cooperative ID', key: 'memberNumber', width: 18 },
+    { header: 'Cadre', key: 'cadre', width: 18 },
+    { header: 'Role', key: 'role', width: 13 },
     { header: 'Joined', key: 'joinedOn', width: 13 },
-    { header: 'Units', key: 'units', width: 8 },
+    { header: 'Plots', key: 'plots', width: 8 },
     { header: 'Committed (NGN)', key: 'committed', width: 18, style: { numFmt: '#,##0' } },
   ];
   for (const member of members) {
     memberSheet.addRow({
       name: member.name,
-      email: member.email,
+      memberNumber: member.memberNumber,
+      cadre: member.cadre,
       role: member.role === 'admin' ? 'Secretariat' : 'Member',
       joinedOn: formatDate(member.joinedOn),
-      units: member.units,
+      plots: member.plots,
       committed: member.committed,
     });
   }
 
-  for (const sheet of [projectSheet, subscriptionSheet, memberSheet]) {
+  for (const sheet of [tierSheet, applicationSheet, memberSheet]) {
     const header = sheet.getRow(1);
     header.font = { bold: true, color: { argb: 'FFF7F3EA' }, size: 10 };
     header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF123628' } };
@@ -218,6 +339,6 @@ export async function exportCycleXlsx(
   const buffer = await workbook.xlsx.writeBuffer();
   download(
     new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    `gidan-daya-cycle-${stamp()}.xlsx`,
+    `gidan-daya-allocation-${stamp()}.xlsx`,
   );
 }

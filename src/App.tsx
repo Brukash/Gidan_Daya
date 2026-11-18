@@ -4,15 +4,15 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'rea
 import { SessionProvider, useSession } from './auth/session';
 import { AppShell } from './components/AppShell';
 import { LoadingBlock, ToastProvider } from './components/ui';
+import { Application } from './pages/Application';
+import { Apply } from './pages/Apply';
 import { Landing } from './pages/Landing';
 import { Members } from './pages/Members';
 import { NotFound } from './pages/NotFound';
 import { Overview } from './pages/Overview';
-import { ProjectDetail } from './pages/ProjectDetail';
-import { Projects } from './pages/Projects';
+import { Plots } from './pages/Plots';
 import { Reports } from './pages/Reports';
 import { SignIn } from './pages/SignIn';
-import { Subscriptions } from './pages/Subscriptions';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -63,9 +63,9 @@ export default function App() {
               <Route path="/app" element={<RequireAuth />}>
                 <Route element={<AppShell />}>
                   <Route index element={<Overview />} />
-                  <Route path="projects" element={<Projects />} />
-                  <Route path="projects/:projectId" element={<ProjectDetail />} />
-                  <Route path="subscriptions" element={<Subscriptions />} />
+                  <Route path="plots" element={<Plots />} />
+                  <Route path="apply" element={<Apply />} />
+                  <Route path="application" element={<Application />} />
                   <Route path="members" element={<Members />} />
                   <Route path="reports" element={<Reports />} />
                 </Route>

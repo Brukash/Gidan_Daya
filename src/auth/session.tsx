@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { MemberRole } from '../data/types';
+import type { Cadre, MemberRole } from '../data/types';
 import { supabase } from '../lib/supabase';
 
 export interface SessionUser {
@@ -7,6 +7,8 @@ export interface SessionUser {
   name: string;
   email: string;
   role: MemberRole;
+  memberNumber: string;
+  cadre: Cadre;
 }
 
 interface SessionValue {
@@ -19,18 +21,24 @@ interface SessionValue {
 const SessionContext = createContext<SessionValue | null>(null);
 const DEMO_KEY = 'gidan-daya:user';
 
+const DEMO_PASSWORD = 'gidandaya';
+
 export const DEMO_MEMBER = {
-  id: 'm-001',
-  name: 'Aisha Bello',
   email: 'member@coop.example',
-  password: 'gidandaya',
+  password: DEMO_PASSWORD,
 } as const;
 
 export const DEMO_ADMIN = {
+  email: 'admin@coop.example',
+  password: DEMO_PASSWORD,
+} as const;
+
+/** The sample member behind both demo accounts. */
+const DEMO_PROFILE = {
   id: 'm-001',
   name: 'Aisha Bello',
-  email: 'admin@coop.example',
-  password: 'gidandaya',
+  memberNumber: 'CBN/2019/0417',
+  cadre: 'Assistant Manager' as Cadre,
 } as const;
 
 function readDemoSession(): SessionUser | null {
@@ -43,17 +51,6 @@ function readDemoSession(): SessionUser | null {
   } catch {
     return null;
   }
-}
-
-function titleFromEmail(email: string): string {
-  const local = email.split('@')[0] ?? 'member';
-  return (
-    local
-      .split(/[._-]/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ') || 'Member'
-  );
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -69,15 +66,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const load = async (id: string, email: string) => {
       const { data: profile } = await client
         .from('profiles')
-        .select('full_name, role')
+        .select('full_name, role, member_number, cadre')
         .eq('id', id)
-        .maybeSingle<{ full_name: string; role: MemberRole }>();
+        .maybeSingle<{ full_name: string; role: MemberRole; member_number: string; cadre: Cadre }>();
       if (!active) return;
       setUser({
         id,
         email,
         name: profile?.full_name ?? email,
         role: profile?.role ?? 'member',
+        memberNumber: profile?.member_number ?? '',
+        cadre: profile?.cadre ?? 'Clerk',
       });
       setLoading(false);
     };
@@ -114,13 +113,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
 
     const normalised = email.trim().toLowerCase();
-    // Demo roles are derived from the address so both surfaces can be reviewed.
-    const role: MemberRole = normalised.startsWith('admin') ? 'admin' : 'member';
+    const isSecretariat = normalised.startsWith('admin');
     const next: SessionUser = {
-      id: DEMO_MEMBER.id,
-      name: normalised.startsWith('admin') ? 'Aisha Bello (secretariat)' : 'Aisha Bello',
+      ...DEMO_PROFILE,
       email: normalised,
-      role,
+      role: isSecretariat ? 'admin' : 'member',
+      name: isSecretariat ? 'Aisha Bello (secretariat)' : DEMO_PROFILE.name,
     };
     window.sessionStorage.setItem(DEMO_KEY, JSON.stringify(next));
     setUser(next);
@@ -147,8 +145,4 @@ export function useSession(): SessionValue {
   const context = useContext(SessionContext);
   if (!context) throw new Error('useSession must be used inside SessionProvider');
   return context;
-}
-
-export function displayNameFor(email: string): string {
-  return titleFromEmail(email);
 }

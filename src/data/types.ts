@@ -1,56 +1,59 @@
-export type ProjectCategory = 'Housing' | 'Agro' | 'Energy' | 'Transport' | 'Property' | 'Education';
+export type Cadre = 'Clerk' | 'Executive Officer' | 'Assistant Manager' | 'Manager' | 'Senior Manager';
 
-export interface Project {
-  id: string;
-  code: string;
-  name: string;
-  summary: string;
-  category: ProjectCategory;
-  unitPrice: number;
-  totalUnits: number;
-  unitsTaken: number;
-  opensOn: string;
-  closesOn: string;
-}
+export type HouseDesign = 'semi-detached' | 'detached';
 
-export type SubscriptionStatus = 'active' | 'due' | 'completed';
-
-export interface Subscription {
-  id: string;
-  reference: string;
-  projectId: string;
-  projectName: string;
-  memberId: string;
-  memberName: string;
-  units: number;
-  amount: number;
-  paid: number;
-  status: SubscriptionStatus;
-  nextDueOn: string | null;
-  createdAt: string;
-}
+export type ApplicationStatus = 'reserved' | 'deposit-paid' | 'fully-paid' | 'allocated';
 
 export type MemberRole = 'member' | 'admin';
+
+export interface Scheme {
+  name: string;
+  estate: string;
+  location: string;
+  /** Naira per square metre, infrastructure inclusive. */
+  pricePerSqm: number;
+  /** Non-refundable application fee, in naira. */
+  applicationFee: number;
+  opensOn: string;
+  closesOn: string;
+  depositDueOn: string;
+  balanceDueOn: string;
+}
+
+export interface PlotTier {
+  id: string;
+  sizeSqm: number;
+  totalPlots: number;
+  allocated: number;
+}
+
+export interface Application {
+  id: string;
+  reference: string;
+  memberId: string;
+  memberName: string;
+  memberNumber: string;
+  cadre: Cadre;
+  sizeSqm: number;
+  houseDesign: HouseDesign;
+  /** sizeSqm x pricePerSqm at the time of application. */
+  amount: number;
+  paid: number;
+  feePaid: boolean;
+  status: ApplicationStatus;
+  createdAt: string;
+}
 
 export interface Member {
   id: string;
   name: string;
   email: string;
+  memberNumber: string;
+  cadre: Cadre;
   role: MemberRole;
   joinedOn: string;
-  units: number;
+  plots: number;
   committed: number;
-}
-
-export interface Cycle {
-  label: string;
-  opensOn: string;
-  closesOn: string;
-}
-
-export interface MonthlyCommitted {
-  month: string;
-  amount: number;
 }
 
 export type DataMode = 'supabase' | 'sample';

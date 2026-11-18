@@ -1,35 +1,47 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button, ErrorBlock, Kpi, LoadingBlock, PageHeader, Passbook, useToast } from '../components/ui';
-import { listMembers, listProjects, listSubscriptions } from '../data/repository';
-import { SAMPLE_CYCLE } from '../data/seed';
-import { describeProject, fundingPercent, remainingUnits, sumBy } from '../lib/funding';
-import { exportCycleXlsx, exportStatementPdf } from '../lib/exports';
-import { formatCompactNaira, formatDate, formatNaira, plural } from '../lib/format';
+import { Link } from 'react-router-dom';
+import { useSession } from '../auth/session';
+import { Button, EmptyState, ErrorBlock, Kpi, LoadingBlock, PageHeader, Passbook, useToast } from '../components/ui';
+import { listApplications, listMembers, listTiers } from '../data/repository';
+import { SCHEME } from '../data/seed';
+import {
+  allocationPercent,
+  hasPriority,
+  remainingPlots,
+  schemeTotals,
+  sumBy,
+} from '../lib/allocations';
+import { exportAllocationXlsx, exportRegisterPdf } from '../lib/exports';
+import { formatCompactNaira, formatDate, formatNaira, formatSqm, plural } from '../lib/format';
 
 export function Reports() {
+  const { user } = useSession();
   const toast = useToast();
   const [busy, setBusy] = useState<'pdf' | 'xlsx' | null>(null);
 
-  const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: listProjects });
-  const subsQuery = useQuery({ queryKey: ['subscriptions', 'all'], queryFn: () => listSubscriptions() });
+  const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers });
+  const appsQuery = useQuery({ queryKey: ['applications', 'all'], queryFn: () => listApplications() });
   const membersQuery = useQuery({ queryKey: ['members'], queryFn: listMembers });
 
-  const projects = projectsQuery.data ?? [];
-  const subs = subsQuery.data ?? [];
+  const tiers = tiersQuery.data ?? [];
+  const apps = appsQuery.data ?? [];
   const members = membersQuery.data ?? [];
 
-  const committed = sumBy(subs, (item) => item.amount);
-  const collected = sumBy(subs, (item) => item.paid);
+  const totals = schemeTotals(tiers, SCHEME);
+  const committed = sumBy(apps, (item) => item.amount);
+  const collected = sumBy(apps, (item) => item.paid);
   const outstanding = Math.max(0, committed - collected);
+  const fees = apps.filter((item) => item.feePaid).length * SCHEME.applicationFee;
+  const priorityCount = apps.filter((item) => hasPriority(item.cadre)).length;
 
-  const loading = projectsQuery.isLoading || subsQuery.isLoading;
+  const loading = tiersQuery.isLoading || appsQuery.isLoading;
 
   const onRegister = async () => {
     setBusy('pdf');
     try {
-      await exportStatementPdf(subs, 'Cooperative register');
-      toast({ title: 'Register downloaded', detail: `${subs.length} ${plural(subs.length, 'subscription')} in the PDF.` });
+      await exportRegisterPdf(apps, tiers);
+      toast({ title: 'Register downloaded', detail: `${apps.length} ${plural(apps.length, 'application')} in the PDF.` });
     } catch (cause) {
       toast({ title: 'Could not build the PDF', detail: cause instanceof Error ? cause.message : 'Unknown error' });
     } finally {
@@ -40,8 +52,8 @@ export function Reports() {
   const onWorkbook = async () => {
     setBusy('xlsx');
     try {
-      await exportCycleXlsx(projects, subs, members);
-      toast({ title: 'Workbook downloaded', detail: 'Three sheets: projects, subscriptions, members.' });
+      await exportAllocationXlsx(tiers, apps, members);
+      toast({ title: 'Workbook downloaded', detail: 'Three sheets: plot availability, applications, applicants.' });
     } catch (cause) {
       toast({ title: 'Could not build the workbook', detail: cause instanceof Error ? cause.message : 'Unknown error' });
     } finally {
@@ -49,91 +61,107 @@ export function Reports() {
     }
   };
 
+  if (user?.role !== 'admin') {
+    return (
+      <div className="space-y-6">
+        <PageHeader eyebrow="Secretariat" title="Allocation report" description="Restricted to secretariat accounts." />
+        <EmptyState
+          title="This report is for the secretariat"
+          body="It totals every applicant's payments, so members cannot open it. Your own figures are on the application page."
+          action={
+            <Link to="/app/application" className="btn btn-forest">
+              My application
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={`Cycle ${SAMPLE_CYCLE.label}`}
-        title="Cycle report"
-        description={`Opened ${formatDate(SAMPLE_CYCLE.opensOn)} · closes ${formatDate(SAMPLE_CYCLE.closesOn)}. Totals are indexed from subscriptions, not typed in.`}
+        eyebrow="Gidan Daya"
+        title="Allocation report"
+        description={`${totals.plots} plots · ${formatNaira(SCHEME.pricePerSqm)} per sqm · ${totals.squareMetres.toLocaleString('en-NG')} sqm at ${formatCompactNaira(totals.value)}. Totals are derived, not typed in.`}
         actions={
           <>
-            <Button variant="ghost" onClick={() => void onRegister()} disabled={busy !== null || subs.length === 0}>
+            <Button variant="ghost" onClick={() => void onRegister()} disabled={busy !== null || apps.length === 0}>
               {busy === 'pdf' ? 'Building PDF…' : 'Register (PDF)'}
             </Button>
             <Button variant="forest" onClick={() => void onWorkbook()} disabled={busy !== null}>
-              {busy === 'xlsx' ? 'Building workbook…' : 'Cycle workbook (Excel)'}
+              {busy === 'xlsx' ? 'Building workbook…' : 'Allocation workbook (Excel)'}
             </Button>
           </>
         }
       />
 
       {loading ? <LoadingBlock /> : null}
-      {projectsQuery.isError ? (
-        <ErrorBlock message={projectsQuery.error.message} onRetry={() => void projectsQuery.refetch()} />
+      {tiersQuery.isError ? (
+        <ErrorBlock message={tiersQuery.error.message} onRetry={() => void tiersQuery.refetch()} />
       ) : null}
 
-      {!loading && !projectsQuery.isError ? (
+      {!loading && !tiersQuery.isError ? (
         <>
-          <section aria-label="Cycle totals" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <Kpi label="Committed" value={formatCompactNaira(committed)} context={`${subs.length} ${plural(subs.length, 'subscription')}`} />
-            <Kpi label="Collected" value={formatCompactNaira(collected)} context="Payments recorded against references" />
-            <Kpi label="Outstanding" value={formatCompactNaira(outstanding)} context="Balance across all members" />
+          <section aria-label="Scheme totals" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <Kpi
-              label="Units taken"
-              value={String(sumBy(projects, (project) => project.unitsTaken))}
-              context={`Across ${projects.length} ${plural(projects.length, 'project')}`}
+              label="Applications"
+              value={String(apps.length)}
+              context={`${priorityCount} from priority cadres`}
+            />
+            <Kpi label="Committed" value={formatCompactNaira(committed)} context="Plot value on all applications" />
+            <Kpi label="Collected" value={formatCompactNaira(collected)} context={`Fees recorded ${formatCompactNaira(fees)}`} />
+            <Kpi
+              label="Outstanding"
+              value={formatCompactNaira(outstanding)}
+              context={`Balance falls due ${formatDate(SCHEME.balanceDueOn)}`}
             />
           </section>
 
           <section aria-labelledby="breakdown-heading" className="card-raised overflow-hidden">
             <div className="border-b border-line px-4 py-3">
               <h2 id="breakdown-heading" className="text-[1.05rem]">
-                Breakdown by project
+                Breakdown by plot size
               </h2>
-              <p className="text-xs text-ink-soft">Funding, commitments and units for the current cycle.</p>
+              <p className="text-xs text-ink-soft">
+                Allocation counts include applications made in this browser while the app runs on sample data.
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="ledger">
-                <caption className="sr-only">Cycle totals per project</caption>
+                <caption className="sr-only">Applications and payments per plot size</caption>
                 <thead>
                   <tr>
-                    <th scope="col">Project</th>
-                    <th scope="col">Units</th>
-                    <th scope="col" className="w-[22%]">
-                      Funding
+                    <th scope="col">Plot size</th>
+                    <th scope="col">Plots</th>
+                    <th scope="col" className="w-[20%]">
+                      Allocated
                     </th>
-                    <th scope="col">Subscriptions</th>
+                    <th scope="col">Applications</th>
+                    <th scope="col">Price</th>
                     <th scope="col">Committed</th>
                     <th scope="col">Collected</th>
-                    <th scope="col">Closes</th>
+                    <th scope="col">Remaining</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.map((project) => {
-                    const own = subs.filter((item) => item.projectId === project.id);
-                    const status = describeProject(project);
+                  {tiers.map((tier) => {
+                    const own = apps.filter((item) => item.sizeSqm === tier.sizeSqm);
                     return (
-                      <tr key={project.id}>
-                        <td>
-                          <span className="num text-[0.625rem] font-semibold uppercase tracking-[0.09em] text-ink-soft">
-                            {project.code}
-                          </span>
-                          <span className="block font-medium">{project.name}</span>
-                          <span className="text-xs text-ink-soft">{status.label}</span>
-                        </td>
-                        <td className="num whitespace-nowrap text-ink-soft">
-                          {project.unitsTaken}/{project.totalUnits}
-                        </td>
+                      <tr key={tier.id}>
+                        <td className="font-medium">{formatSqm(tier.sizeSqm)}</td>
+                        <td className="num text-ink-soft">{tier.totalPlots}</td>
                         <td className="min-w-[8rem]">
-                          <Passbook unitsTaken={project.unitsTaken} totalUnits={project.totalUnits} />
+                          <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                           <span className="num mt-1 block text-xs text-ink-soft">
-                            {fundingPercent(project.unitsTaken, project.totalUnits)}% · {remainingUnits(project)} left
+                            {allocationPercent(tier.allocated, tier.totalPlots)}% · {remainingPlots(tier)} left
                           </span>
                         </td>
                         <td className="num">{own.length}</td>
-                        <td className="num">{formatNaira(sumBy(own, (item) => item.amount))}</td>
-                        <td className="num">{formatNaira(sumBy(own, (item) => item.paid))}</td>
-                        <td className="whitespace-nowrap text-ink-soft">{formatDate(project.closesOn)}</td>
+                        <td className="num whitespace-nowrap">{formatNaira(tier.sizeSqm * SCHEME.pricePerSqm)}</td>
+                        <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.amount))}</td>
+                        <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.paid))}</td>
+                        <td className="num">{remainingPlots(tier)}</td>
                       </tr>
                     );
                   })}
@@ -143,7 +171,8 @@ export function Reports() {
           </section>
 
           <p className="text-xs text-ink-soft">
-            Exports are generated in the browser from the data above. No file leaves the device.
+            Exports are generated in the browser from the data above. No file leaves the device. Figures are sample data
+            until this deployment is connected to Supabase.
           </p>
         </>
       ) : null}

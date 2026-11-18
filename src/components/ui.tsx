@@ -7,8 +7,8 @@ import {
   type ButtonHTMLAttributes,
   type ReactNode,
 } from 'react';
-import type { SubscriptionStatus, DataMode } from '../data/types';
-import { PASSBOOK_TICKS, filledTicks, type ProjectStatus } from '../lib/funding';
+import type { ApplicationStatus, DataMode } from '../data/types';
+import { PASSBOOK_TICKS, filledTicks, type TierStatus } from '../lib/allocations';
 
 type Variant = 'primary' | 'forest' | 'ghost' | 'quiet';
 
@@ -45,26 +45,26 @@ export function PageHeader({
 }
 
 export function Passbook({
-  unitsTaken,
-  totalUnits,
+  allocated,
+  totalPlots,
   tone = 'forest',
   size = 'sm',
   label,
 }: {
-  unitsTaken: number;
-  totalUnits: number;
+  allocated: number;
+  totalPlots: number;
   tone?: 'forest' | 'gold';
   size?: 'sm' | 'lg';
   label?: string;
 }) {
-  const filled = filledTicks(unitsTaken, totalUnits);
-  const percent = totalUnits > 0 ? Math.round((unitsTaken / totalUnits) * 100) : 0;
+  const filled = filledTicks(allocated, totalPlots);
+  const percent = totalPlots > 0 ? Math.round((allocated / totalPlots) * 100) : 0;
 
   return (
     <div
       className={`passbook${tone === 'gold' ? ' passbook--gold' : ''}${size === 'lg' ? ' passbook--lg' : ''}`}
       role="img"
-      aria-label={label ?? `${percent}% of units subscribed`}
+      aria-label={label ?? `${percent}% of plots allocated`}
     >
       {Array.from({ length: PASSBOOK_TICKS }, (_, index) => (
         <span key={index} data-filled={index < filled} />
@@ -73,17 +73,17 @@ export function Passbook({
   );
 }
 
-const PROJECT_TONE: Record<ProjectStatus['state'], string> = {
-  open: 'bg-sage text-forest',
-  closing: 'bg-gold-tint text-[#6f4d12]',
-  funded: 'bg-forest text-paper',
+const TIER_TONE: Record<TierStatus['state'], string> = {
+  available: 'bg-sage text-forest',
+  limited: 'bg-gold-tint text-[#6f4d12]',
+  exhausted: 'bg-forest text-paper',
   closed: 'bg-paper-3 text-ink-soft',
 };
 
-export function ProjectPill({ status }: { status: ProjectStatus }) {
+export function TierPill({ status }: { status: TierStatus }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${PROJECT_TONE[status.state]}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${TIER_TONE[status.state]}`}
     >
       <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {status.label}
@@ -91,14 +91,15 @@ export function ProjectPill({ status }: { status: ProjectStatus }) {
   );
 }
 
-const SUBSCRIPTION_TONE: Record<SubscriptionStatus, { label: string; className: string }> = {
-  active: { label: 'Active', className: 'bg-sage text-forest' },
-  due: { label: 'Payment due', className: 'bg-clay-tint text-clay-deep' },
-  completed: { label: 'Completed', className: 'bg-paper-3 text-ink-soft' },
+const APPLICATION_TONE: Record<ApplicationStatus, { label: string; className: string }> = {
+  reserved: { label: 'Reserved', className: 'bg-gold-tint text-[#6f4d12]' },
+  'deposit-paid': { label: 'Deposit paid', className: 'bg-sage text-forest' },
+  'fully-paid': { label: 'Fully paid', className: 'bg-forest text-paper' },
+  allocated: { label: 'Allocated', className: 'bg-forest text-paper' },
 };
 
-export function SubscriptionPill({ status }: { status: SubscriptionStatus }) {
-  const tone = SUBSCRIPTION_TONE[status];
+export function ApplicationPill({ status }: { status: ApplicationStatus }) {
+  const tone = APPLICATION_TONE[status];
   return (
     <span
       className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${tone.className}`}
@@ -160,7 +161,7 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
   );
 }
 
-export function LoadingBlock({ label = 'Loading the ledger…' }: { label?: string }) {
+export function LoadingBlock({ label = 'Opening the register…' }: { label?: string }) {
   return (
     <div role="status" className="flex items-center gap-3 px-1 py-8 text-sm text-ink-soft">
       <span aria-hidden className="h-3 w-3 animate-pulse rounded-full bg-forest" />
@@ -172,7 +173,7 @@ export function LoadingBlock({ label = 'Loading the ledger…' }: { label?: stri
 export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div role="alert" className="card border-clay/40 bg-clay-tint/50 px-5 py-4">
-      <p className="text-sm font-semibold text-clay-deep">Something went wrong reading the ledger</p>
+      <p className="text-sm font-semibold text-clay-deep">Something went wrong reading the register</p>
       <p className="mt-1 text-sm text-ink-soft">{message}</p>
       {onRetry ? (
         <div className="mt-3">
@@ -204,15 +205,7 @@ export function DataModeBadge({ mode }: { mode: DataMode }) {
   );
 }
 
-export function Kpi({
-  label,
-  value,
-  context,
-}: {
-  label: string;
-  value: string;
-  context?: string;
-}) {
+export function Kpi({ label, value, context }: { label: string; value: string; context?: string }) {
   return (
     <div className="card-raised px-4 py-4">
       <p className="text-xs font-semibold uppercase tracking-[0.09em] text-ink-soft">{label}</p>

@@ -1,22 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useSession } from '../auth/session';
-import { SAMPLE_CYCLE } from '../data/seed';
+import { SCHEME } from '../data/seed';
 import { dataMode } from '../lib/supabase';
 import { DataModeBadge } from './ui';
 
-const NAV = [
-  { to: '/app', label: 'Overview', end: true, icon: 'grid' },
-  { to: '/app/projects', label: 'Projects', end: false, icon: 'folder' },
-  { to: '/app/subscriptions', label: 'My subscriptions', end: false, icon: 'receipt' },
-  { to: '/app/members', label: 'Members', end: false, icon: 'users' },
-  { to: '/app/reports', label: 'Reports', end: false, icon: 'chart' },
-] as const;
+type IconName = 'grid' | 'plots' | 'plus' | 'receipt' | 'users' | 'chart';
 
-function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
+interface NavItem {
+  to: string;
+  label: string;
+  end: boolean;
+  icon: IconName;
+  adminOnly?: boolean;
+}
+
+const NAV: NavItem[] = [
+  { to: '/app', label: 'Overview', end: true, icon: 'grid' },
+  { to: '/app/plots', label: 'Plot availability', end: false, icon: 'plots' },
+  { to: '/app/apply', label: 'Apply for a plot', end: false, icon: 'plus' },
+  { to: '/app/application', label: 'My application', end: false, icon: 'receipt' },
+  { to: '/app/members', label: 'Applicants', end: false, icon: 'users', adminOnly: true },
+  { to: '/app/reports', label: 'Reports', end: false, icon: 'chart', adminOnly: true },
+];
+
+function Icon({ name }: { name: IconName }) {
   const paths: Record<string, string> = {
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
-    folder: 'M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5z',
+    plots: 'M4 7l8-3 8 3-8 3zM4 12l8 3 8-3M4 17l8 3 8-3',
+    plus: 'M12 5v14M5 12h14',
     receipt: 'M6 3.5h12v17l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',
     users: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 19c.6-3 2.8-4.5 5.5-4.5S13 16 13.5 19M17 11.5a2.5 2.5 0 1 0 0-5M15.5 14.8c2.4.3 4 1.8 4.5 4.2',
     chart: 'M4 19V5M4 19h16M8 15v-4M12.5 15V8M17 15v-6',
@@ -31,18 +43,19 @@ function Icon({ name }: { name: (typeof NAV)[number]['icon'] }) {
 
 function Rail({ onNavigate }: { onNavigate?: () => void }) {
   const { user, signOut } = useSession();
+  const items = NAV.filter((item) => !item.adminOnly || user?.role === 'admin');
 
   return (
     <div className="flex h-full flex-col bg-forest px-3 py-5 text-paper">
       <div className="px-2">
         <p className="font-display text-[1.35rem] leading-none tracking-[-0.03em]">Gidan Daya</p>
-        <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.14em] text-paper/55">CBN Cooperative</p>
+        <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.14em] text-paper/55">CBN Staff Cooperative</p>
       </div>
 
       <div className="my-5 h-px bg-paper/15" />
 
       <nav aria-label="Primary" className="flex flex-col gap-0.5">
-        {NAV.map((item) => (
+        {items.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className="rail-link" onClick={onNavigate}>
             <Icon name={item.icon} />
             {item.label}
@@ -51,12 +64,14 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto border-t border-paper/15 pt-4">
-        <p className="px-1 text-[0.6875rem] uppercase tracking-[0.12em] text-paper/50">Cycle {SAMPLE_CYCLE.label}</p>
+        <p className="px-1 text-[0.6875rem] uppercase tracking-[0.12em] text-paper/50">
+          Closes {new Date(SCHEME.closesOn).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}
+        </p>
         {user ? (
           <>
             <p className="mt-2 px-1 text-sm font-semibold text-paper">{user.name}</p>
             <p className="px-1 text-xs text-paper/60">
-              {user.role === 'admin' ? 'Secretariat' : 'Member'} · {user.email}
+              {user.role === 'admin' ? 'Secretariat' : user.cadre} · {user.memberNumber}
             </p>
             <button
               type="button"
@@ -124,7 +139,7 @@ export function AppShell() {
                 <p className="font-display text-base leading-none">Gidan Daya</p>
               </div>
               <p className="hidden text-sm text-ink-soft lg:block">
-                Cycle {SAMPLE_CYCLE.label} · subscriptions close 27 Feb 2027
+                Applications close 30 Dec 2026 · ₦27,000 per sqm
               </p>
             </div>
             <div className="flex items-center gap-2">

@@ -4,7 +4,7 @@
 |---|---|---|---|---|
 | Global | Display + UI typefaces | `scripts/fetch-fonts.mjs` → `public/fonts/*.woff2` (Google Fonts CSS API) | Shipped, self-hosted | SIL Open Font License 1.1 |
 | Global | Favicon / mark | Hand-authored SVG (`public/favicon.svg`) | Shipped | Original work for this project |
-| Landing hero | Product window (projects, meters, KPIs) | Built in code from the sample-data set; interactive, labelled "Sample data" | Shipped | Original work |
+| Landing hero | Product window (plot sizes, passbook meters, prices) | Built in code from the sample-data set; interactive, labelled "Sample data" | Shipped | Original work |
 | Landing steps | Numerals, rules, arrows | CSS + SVG drawn to the token palette | Shipped | Original work |
 | Landing ledger | Funding table with passbook meters | Data table component over sample data | Shipped | Original work |
 | Secretariat panel | Reconciliation / approvals list | Code-drawn UI replica over sample data | Shipped | Original work |
@@ -16,7 +16,7 @@
 | Need | Why it matters | Status |
 |---|---|---|
 | Cooperative logo (SVG) | The wordmark is currently set in Fraunces, not a logo | Missing — placeholder is honest type, not a fake mark |
-| Photography: project sites, handover, secretariat at work | A cooperative site is warmer with real members | Missing — no stock people were substituted, because presenting stock as members would be false |
+| Photography: the Gidan Daya site, layout plan, show houses, secretariat at work | A land offering is more credible when buyers can see the land | Missing — no stock people were substituted, because presenting stock as members would be false |
 | Official colour / type guidelines | If CBN Cooperative has brand rules, they outrank this palette | Missing |
 | Legal details: registration number, address, support hours | Required for a trust footer in finance | Missing — footer uses functional links only, no invented details |
 | Supabase project URL + anon key | Switches the app from sample data to live data | Missing |

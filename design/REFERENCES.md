@@ -23,7 +23,7 @@ These were read as search summaries on 2026-11-18 (excerpts, not screenshots). N
 ## 4. Cooperative Admin — https://saheedibikunle.com/designs
 
 - **Observed (summary):** a permission-layered officer dashboard for contributions, loans, withdrawals and repayments; approval actions require confirmation plus an audit note, so the paper trail is part of the flow.
-- **Principle taken:** administrative actions carry their evidence. Informs the admin/Members surface and the per-subscription reference numbers shown in tables and exports.
+- **Principle taken:** administrative actions carry their evidence. Informs the secretariat/Applicants surface and the per-application reference numbers shown in tables and exports.
 - **Things to avoid:** an officer-only product. The member is the primary audience here; admin surfaces are secondary navigation.
 
 ## URLs proposed but not used
