@@ -69,7 +69,11 @@ insert into public.plot_tiers (size_sqm, total_plots) values (200, 4), (300, 44)
 create table public.applications (
   id uuid primary key default gen_random_uuid(),
   reference text not null unique,
-  member_id uuid not null references public.profiles (id) on delete cascade,
+  -- Null when the application was submitted without signing in and the ID
+  -- number did not match a profile. Set when it did, so the member later sees
+  -- the application on their own page.
+  member_id uuid references public.profiles (id) on delete set null,
+  applicant_name text not null,
   member_number text not null,
   cadre public.cadre not null,
   size_sqm integer not null check (size_sqm between 100 and 1000),
@@ -412,6 +416,7 @@ begin
   insert into public.applications (
     reference,
     member_id,
+    applicant_name,
     member_number,
     cadre,
     size_sqm,
@@ -427,6 +432,7 @@ begin
   values (
     'GD-' || p_size_sqm || '-' || lpad((v_tier.allocated + 1)::text, 4, '0'),
     v_member,
+    v_actor,
     upper(btrim(p_member_number)),
     p_cadre,
     p_size_sqm,
@@ -466,6 +472,166 @@ $$;
 
 revoke all on function public.create_plot_application(integer, public.house_design, text, public.cadre, text[], text) from public;
 grant execute on function public.create_plot_application(integer, public.house_design, text, public.cadre, text[], text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Applying without an account
+--
+-- The call asks members to fill an online form; it does not require a portal
+-- account. The applicant states their ID number and name, and the secretariat
+-- verifies both against the register and the fee evidence before anything is
+-- allocated. A matching ID number links the application to that profile so the
+-- member sees it if they sign in later; it is not proof of identity.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.create_public_application(
+  p_size_sqm integer,
+  p_house_design public.house_design,
+  p_member_number text,
+  p_cadre public.cadre,
+  p_applicant_name text,
+  p_accepted_clauses text[],
+  p_terms_version text
+)
+returns public.applications
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_member uuid;
+  v_member_name text;
+  v_scheme public.scheme;
+  v_tier public.plot_tiers;
+  v_application public.applications;
+  v_name text := btrim(coalesce(p_applicant_name, ''));
+  v_number text := upper(btrim(coalesce(p_member_number, '')));
+begin
+  if char_length(v_name) < 3 then
+    raise exception 'APPLICANT_NAME_REQUIRED' using errcode = '22023';
+  end if;
+
+  if v_number = '' then
+    raise exception 'MEMBER_NUMBER_REQUIRED' using errcode = '22023';
+  end if;
+
+  if p_size_sqm is null then
+    raise exception 'INVALID_SIZE' using errcode = '22023';
+  end if;
+
+  if p_accepted_clauses is null
+     or not (p_accepted_clauses @> array['refunds', 'default', 'variation', 'title']::text[]) then
+    raise exception 'TERMS_NOT_ACCEPTED' using errcode = '22023';
+  end if;
+
+  if coalesce(btrim(p_terms_version), '') = '' then
+    raise exception 'TERMS_VERSION_REQUIRED' using errcode = '22023';
+  end if;
+
+  select id, full_name into v_member, v_member_name
+  from public.profiles
+  where upper(member_number) = v_number
+  limit 1;
+
+  select * into v_scheme from public.scheme where id;
+  if not found then
+    raise exception 'SCHEME_NOT_CONFIGURED' using errcode = 'P0002';
+  end if;
+
+  if current_date > v_scheme.closes_on then
+    raise exception 'APPLICATIONS_CLOSED' using errcode = '22023';
+  end if;
+
+  -- Lock the tier row so two applicants cannot take the same last plot.
+  select * into v_tier from public.plot_tiers where size_sqm = p_size_sqm for update;
+  if not found then
+    raise exception 'TIER_NOT_FOUND' using errcode = 'P0002';
+  end if;
+
+  if v_tier.allocated >= v_tier.total_plots then
+    raise exception 'TIER_EXHAUSTED' using errcode = '22023';
+  end if;
+
+  insert into public.applications (
+    reference,
+    member_id,
+    applicant_name,
+    member_number,
+    cadre,
+    size_sqm,
+    house_design,
+    amount,
+    paid,
+    fee_paid,
+    status,
+    terms_version,
+    terms_accepted_at,
+    accepted_clauses
+  )
+  values (
+    'GD-' || p_size_sqm || '-' || lpad((v_tier.allocated + 1)::text, 4, '0'),
+    v_member,
+    coalesce(v_member_name, v_name),
+    v_number,
+    p_cadre,
+    p_size_sqm,
+    p_house_design,
+    p_size_sqm * v_scheme.price_per_sqm,
+    0,
+    true,
+    'reserved',
+    btrim(p_terms_version),
+    now(),
+    p_accepted_clauses
+  )
+  returning * into v_application;
+
+  update public.plot_tiers
+  set allocated = allocated + 1
+  where id = v_tier.id;
+
+  insert into public.audit_events (application_id, actor, action, note)
+  values
+    (
+      v_application.id,
+      v_name,
+      'Application submitted',
+      v_application.reference || ' for ' || p_size_sqm || ' sqm, submitted online without signing in.'
+    ),
+    (
+      v_application.id,
+      v_name,
+      'Terms accepted',
+      btrim(p_terms_version) || ' — ' || array_length(p_accepted_clauses, 1) || ' conditions acknowledged.'
+    );
+
+  return v_application;
+end;
+$$;
+
+revoke all on function public.create_public_application(integer, public.house_design, text, public.cadre, text, text[], text) from public;
+grant execute on function public.create_public_application(integer, public.house_design, text, public.cadre, text, text[], text) to anon, authenticated;
+
+-- Opening a receipt needs the reference and the ID number on it; neither is
+-- enough on its own. Returns at most the one matching row.
+create or replace function public.get_public_application(
+  p_reference text,
+  p_member_number text
+)
+returns setof public.applications
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select *
+  from public.applications
+  where upper(reference) = upper(btrim(coalesce(p_reference, '')))
+    and upper(member_number) = upper(btrim(coalesce(p_member_number, '')))
+  limit 1;
+$$;
+
+revoke all on function public.get_public_application(text, text) from public;
+grant execute on function public.get_public_application(text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Verifying payment evidence (atomic: status, payment, audit trail)

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSession } from '../auth/session';
+import { BrandBar } from '../components/BrandBar';
 import { Button, ErrorBlock, Field, LoadingBlock, PageHeader, Passbook, useToast } from '../components/ui';
 import { createApplication, getSettings, listTiers } from '../data/repository';
 import { SCHEME } from '../data/seed';
@@ -22,6 +23,7 @@ export function Apply() {
   const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
   const [step, setStep] = useState<1 | 2>(1);
+  const [applicantName, setApplicantName] = useState(user?.name ?? '');
   const [sizeSqm, setSizeSqm] = useState<number>(() => Number(params.get('size')) || 300);
   const [houseDesign, setHouseDesign] = useState<HouseDesign>('semi-detached');
   const [memberNumber, setMemberNumber] = useState(user?.memberNumber ?? '');
@@ -34,31 +36,28 @@ export function Apply() {
   const selected = tiers.find((tier) => tier.sizeSqm === sizeSqm) ?? openTiers[0];
   const availableSizes = openTiers.map((tier) => tier.sizeSqm);
   const policy = describePolicy(settingsQuery.data?.allocationPolicy ?? 'cadre-priority-same-day');
+  const signedIn = Boolean(user);
 
   const mutation = useMutation({
     mutationFn: createApplication,
     onSuccess: async (created) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['applications'] }),
+        queryClient.invalidateQueries({ queryKey: ['members'] }),
         queryClient.invalidateQueries({ queryKey: ['tiers'] }),
         queryClient.invalidateQueries({ queryKey: ['audit'] }),
       ]);
-      toast({
-        title: `Application ${created.reference} created`,
-        detail: `Terms accepted. Attach your payment evidence so the secretariat can verify the deposit.`,
+      navigate(`/apply/received/${encodeURIComponent(created.reference)}`, {
+        replace: true,
+        state: { application: created },
       });
-      navigate('/app/application');
     },
     onError: (error: Error) => {
       toast({ title: 'Could not submit the application', detail: error.message });
     },
   });
 
-  if (!user) return null;
   if (tiersQuery.isLoading) return <LoadingBlock label="Reading plot availability…" />;
-  if (tiersQuery.isError) {
-    return <ErrorBlock message={tiersQuery.error.message} onRetry={() => void tiersQuery.refetch()} />;
-  }
 
   const amount = selected ? priceForPlot(selected.sizeSqm, SCHEME.pricePerSqm) : 0;
 
@@ -71,6 +70,7 @@ export function Apply() {
     }
 
     const parsed = applicationDetailsSchema(availableSizes).safeParse({
+      applicantName,
       sizeSqm: selected.sizeSqm,
       houseDesign,
       memberNumber,
@@ -102,6 +102,7 @@ export function Apply() {
     }
 
     const parsed = applicationSchema(availableSizes).safeParse({
+      applicantName,
       sizeSqm: selected.sizeSqm,
       houseDesign,
       memberNumber,
@@ -121,8 +122,8 @@ export function Apply() {
 
     setErrors({});
     mutation.mutate({
-      memberId: user.id,
-      memberName: user.name,
+      memberId: user?.id ?? null,
+      memberName: parsed.data.applicantName,
       memberNumber: parsed.data.memberNumber.toUpperCase(),
       cadre: parsed.data.cadre,
       sizeSqm: parsed.data.sizeSqm,
@@ -137,382 +138,444 @@ export function Apply() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Gidan Daya"
-        title="Apply for a plot"
-        description={`One application covers one plot. The ${formatNaira(SCHEME.applicationFee)} application fee is non-refundable; the 50% deposit is due ${formatDate(SCHEME.depositDueOn)}.`}
-        actions={
-          <ol className="flex items-center gap-2 text-xs" aria-label="Application steps">
-            {[
-              { number: 1, label: 'Plot and applicant' },
-              { number: 2, label: 'Conditions' },
-            ].map((item) => {
-              const active = step === item.number;
-              const done = step > item.number;
-              return (
-                <li key={item.number}>
-                  <span
-                    aria-current={active ? 'step' : undefined}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold ${
-                      active
-                        ? 'border-forest bg-forest text-paper'
-                        : done
-                          ? 'border-forest/30 bg-sage text-forest'
-                          : 'border-line bg-paper-2 text-ink-soft'
-                    }`}
-                  >
-                    <span aria-hidden className="num">{done ? '✓' : item.number}</span>
-                    {item.label}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        }
-      />
+    <div className="min-h-dvh">
+      <BrandBar>
+        <span className="hidden text-xs text-ink-soft sm:inline">No account needed</span>
+      </BrandBar>
 
-      {step === 1 ? (
-        <form onSubmit={continueToTerms} noValidate className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-          <div className="space-y-5">
-            <section className="card-raised p-4 sm:p-5">
-              <h2 className="text-[1.05rem]">1. Choose a plot size</h2>
-              <p className="mt-1 text-xs text-ink-soft">
-                Availability is first-come by payment confirmation. Sizes are confirmed after survey.
-              </p>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {tiers.map((tier) => {
-                  const left = remainingPlots(tier);
-                  const soldOut = left === 0;
-                  const chosen = selected?.sizeSqm === tier.sizeSqm;
-
+      <main className="mx-auto max-w-[1180px] px-5 py-8">
+        <div className="space-y-6">
+          <PageHeader
+            eyebrow="Gidan Daya"
+            title="Apply for a plot"
+            description={`One application covers one plot. The ${formatNaira(SCHEME.applicationFee)} application fee is non-refundable; the 50% deposit is due ${formatDate(SCHEME.depositDueOn)}.`}
+            actions={
+              <ol className="flex items-center gap-2 text-xs" aria-label="Application steps">
+                {[
+                  { number: 1, label: 'Plot and applicant' },
+                  { number: 2, label: 'Conditions' },
+                ].map((item) => {
+                  const active = step === item.number;
+                  const done = step > item.number;
                   return (
-                    <label
-                      key={tier.id}
-                      className={`flex cursor-pointer items-start justify-between gap-3 rounded-sm border px-3 py-3 transition-colors ${
-                        soldOut
-                          ? 'cursor-not-allowed border-line bg-paper-3/60 text-ink-soft'
-                          : chosen
-                            ? 'border-forest bg-sage/50'
-                            : 'border-line bg-paper-2 hover:border-forest/40'
-                      }`}
-                    >
-                      <span className="min-w-0">
-                        <span className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="size"
-                            className="accent-forest"
-                            value={tier.sizeSqm}
-                            checked={chosen}
-                            disabled={soldOut}
-                            onChange={() => {
-                              setSizeSqm(tier.sizeSqm);
-                              setErrors((current) => ({ ...current, sizeSqm: '' }));
-                            }}
-                          />
-                          <span className="font-medium">{formatSqm(tier.sizeSqm)}</span>
-                        </span>
-                        <span className="num mt-1 block text-xs text-ink-soft">
-                          {soldOut ? 'Fully allocated' : `${left} of ${tier.totalPlots} left`}
-                        </span>
+                    <li key={item.number}>
+                      <span
+                        aria-current={active ? 'step' : undefined}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold ${
+                          active
+                            ? 'border-forest bg-forest text-paper'
+                            : done
+                              ? 'border-forest/30 bg-sage text-forest'
+                              : 'border-line bg-paper-2 text-ink-soft'
+                        }`}
+                      >
+                        <span aria-hidden className="num">{done ? '✓' : item.number}</span>
+                        {item.label}
                       </span>
-                      <span className="num shrink-0 text-right text-sm">
-                        {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))}
-                        <span className="block text-[0.625rem] text-ink-soft">
-                          deposit {formatNaira(depositFor(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm)))}
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-              {errors.sizeSqm ? (
-                <p role="alert" className="field-error mt-2">
-                  {errors.sizeSqm}
-                </p>
-              ) : null}
-            </section>
-
-            <section className="card-raised p-4 sm:p-5">
-              <h2 className="text-[1.05rem]">2. Choose a house design</h2>
-              <p className="mt-1 text-xs text-ink-soft">
-                Both designs are 4-bedroom duplexes. The design does not change the plot price.
-              </p>
-
-              <div className="mt-4 grid gap-2">
-                {HOUSE_DESIGNS.map((design) => (
-                  <label
-                    key={design.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-sm border px-3 py-2.5 transition-colors ${
-                      houseDesign === design.id
-                        ? 'border-forest bg-sage/50'
-                        : 'border-line bg-paper-2 hover:border-forest/40'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="design"
-                      className="accent-forest"
-                      value={design.id}
-                      checked={houseDesign === design.id}
-                      onChange={() => setHouseDesign(design.id)}
-                    />
-                    <span className="text-sm">{design.label}</span>
-                  </label>
-                ))}
-              </div>
-            </section>
-
-            <section className="card-raised p-4 sm:p-5">
-              <h2 className="text-[1.05rem]">3. Your cooperative details</h2>
-              <p className="mt-1 text-xs text-ink-soft">
-                The cooperative matches payments using your ID number and name in the transfer narration.
-              </p>
-
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Field
-                  label="Cooperative ID number"
-                  htmlFor="memberNumber"
-                  hint="As it appears on your cooperative records."
-                  error={errors.memberNumber}
-                >
-                  <input
-                    id="memberNumber"
-                    name="memberNumber"
-                    className={`input${errors.memberNumber ? ' input-invalid' : ''}`}
-                    value={memberNumber}
-                    onChange={(event) => setMemberNumber(event.target.value)}
-                    autoComplete="off"
-                    placeholder="CBN/2019/0417"
-                    aria-invalid={Boolean(errors.memberNumber)}
-                    aria-describedby={errors.memberNumber ? 'memberNumber-error' : 'memberNumber-hint'}
-                  />
-                </Field>
-
-                <Field label="Cadre" htmlFor="cadre" hint="Determines priority under the call." error={errors.cadre}>
-                  <select
-                    id="cadre"
-                    name="cadre"
-                    className="input"
-                    value={cadre}
-                    onChange={(event) => setCadre(event.target.value as Cadre)}
-                  >
-                    {CADRES.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              <div className="mt-4 rounded-sm border border-line bg-paper-3/50 px-3 py-3 text-xs leading-relaxed text-ink-soft">
-                <p className="font-semibold text-ink">Applicant on this application</p>
-                <p className="mt-0.5">
-                  {user.name} · {memberNumber || 'no ID number yet'}
-                </p>
-                <p className="mt-1">
-                  Applications are personal to a cooperative member. Contact the secretariat if these details are wrong
-                  before paying.
-                </p>
-              </div>
-            </section>
-          </div>
-
-          <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
-            <section className="card-raised p-4">
-              <h2 className="text-[1.05rem]">What you will pay</h2>
-
-              {selected ? (
-                <>
-                  <div className="mt-3 flex items-baseline justify-between gap-3">
-                    <span className="text-sm text-ink-soft">{formatSqm(selected.sizeSqm)} plot</span>
-                    <span className="num font-display text-[1.4rem] leading-none text-forest">
-                      {formatNaira(amount)}
-                    </span>
-                  </div>
-                  <p className="num mt-1 text-xs text-ink-soft">
-                    {formatNaira(SCHEME.pricePerSqm)}/sqm × {selected.sizeSqm} sqm
-                  </p>
-
-                  <div className="mt-3">
-                    <Passbook allocated={selected.allocated} totalPlots={selected.totalPlots} />
-                    <p className="num mt-1 text-xs text-ink-soft">
-                      {remainingPlots(selected)} of {selected.totalPlots} plots still open
-                    </p>
-                  </div>
-
-                  <dl className="mt-4 divide-y divide-line border-t border-line text-sm">
-                    <div className="flex items-baseline justify-between gap-3 py-2">
-                      <dt className="text-ink-soft">Application fee</dt>
-                      <dd className="num">{formatNaira(SCHEME.applicationFee)}</dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3 py-2">
-                      <dt className="text-ink-soft">50% deposit</dt>
-                      <dd className="num">{formatNaira(depositFor(amount))}</dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3 py-2">
-                      <dt className="text-ink-soft">Balance</dt>
-                      <dd className="num">{formatNaira(amount - depositFor(amount))}</dd>
-                    </div>
-                  </dl>
-                </>
-              ) : (
-                <p className="mt-3 text-sm text-ink-soft">No plot sizes are open right now.</p>
-              )}
-            </section>
-
-            <section className="card p-4">
-              <h2 className="text-[1.05rem]">Before you continue</h2>
-              <p className="mt-1.5 text-sm text-ink-soft">
-                Step 2 sets out the refund, default, plot-size and title conditions. You will acknowledge each one
-                before the application is created.
-              </p>
-            </section>
-
-            <button type="submit" className="btn btn-primary w-full" disabled={!selected}>
-              Continue to the conditions
-            </button>
-            <p className="text-center text-xs text-ink-soft">Applications close {formatDate(SCHEME.closesOn)}.</p>
-          </aside>
-        </form>
-      ) : (
-        <form onSubmit={submit} noValidate className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-          <div className="space-y-4">
-            <section className="card-raised p-4 sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-[1.05rem]">Conditions of application</h2>
-                  <p className="mt-1 text-xs text-ink-soft">
-                    {TERMS_VERSION} · effective {formatDate(TERMS_EFFECTIVE_ON)}. Acknowledge each condition; the record
-                    stores the version and the date you accepted it.
-                  </p>
-                </div>
-                <span className="num rounded-full bg-paper-3 px-2.5 py-1 text-xs text-ink-soft">
-                  {accepted.length}/{TERMS_CLAUSES.length} acknowledged
-                </span>
-              </div>
-
-              <ol className="mt-4 space-y-3">
-                {TERMS_CLAUSES.map((clause) => {
-                  const checked = accepted.includes(clause.id);
-                  return (
-                    <li
-                      key={clause.id}
-                      className={`rounded-sm border px-3.5 py-3 transition-colors ${
-                        checked ? 'border-forest/35 bg-sage/40' : 'border-line bg-paper-2'
-                      }`}
-                    >
-                      <label className="flex cursor-pointer items-start gap-3">
-                        <input
-                          type="checkbox"
-                          className="mt-1 accent-forest"
-                          checked={checked}
-                          onChange={(event) => toggleClause(clause.id, event.target.checked)}
-                          aria-describedby={`${clause.id}-body`}
-                        />
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-forest">{clause.title}</span>
-                          <span className="mt-0.5 block font-display text-[1.02rem] leading-snug">
-                            {clause.headline}
-                          </span>
-                          <span id={`${clause.id}-body`} className="mt-1.5 block text-sm leading-relaxed text-ink-soft">
-                            {clause.body}
-                          </span>
-                          <span className="mt-1.5 block text-[0.6875rem] uppercase tracking-[0.06em] text-ink-soft">
-                            {clause.source}
-                          </span>
-                        </span>
-                      </label>
                     </li>
                   );
                 })}
               </ol>
+            }
+          />
 
-              {errors.acceptedClauses ? (
-                <p role="alert" className="field-error mt-3">
-                  {errors.acceptedClauses}
+          {tiersQuery.isError ? (
+            <ErrorBlock message={tiersQuery.error.message} onRetry={() => void tiersQuery.refetch()} />
+          ) : null}
+
+          {step === 1 ? (
+            <form onSubmit={continueToTerms} noValidate className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+              <div className="space-y-5">
+                <section className="card-raised p-4 sm:p-5">
+                  <h2 className="text-[1.05rem]">1. Choose a plot size</h2>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    Availability is first-come by payment confirmation. Sizes are confirmed after survey.
+                  </p>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {tiers.map((tier) => {
+                      const left = remainingPlots(tier);
+                      const soldOut = left === 0;
+                      const chosen = selected?.sizeSqm === tier.sizeSqm;
+
+                      return (
+                        <label
+                          key={tier.id}
+                          className={`flex cursor-pointer items-start justify-between gap-3 rounded-sm border px-3 py-3 transition-colors ${
+                            soldOut
+                              ? 'cursor-not-allowed border-line bg-paper-3/60 text-ink-soft'
+                              : chosen
+                                ? 'border-forest bg-sage/50'
+                                : 'border-line bg-paper-2 hover:border-forest/40'
+                          }`}
+                        >
+                          <span className="min-w-0">
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="size"
+                                className="accent-forest"
+                                value={tier.sizeSqm}
+                                checked={chosen}
+                                disabled={soldOut}
+                                onChange={() => {
+                                  setSizeSqm(tier.sizeSqm);
+                                  setErrors((current) => ({ ...current, sizeSqm: '' }));
+                                }}
+                              />
+                              <span className="font-medium">{formatSqm(tier.sizeSqm)}</span>
+                            </span>
+                            <span className="num mt-1 block text-xs text-ink-soft">
+                              {soldOut ? 'Fully allocated' : `${left} of ${tier.totalPlots} left`}
+                            </span>
+                          </span>
+                          <span className="num shrink-0 text-right text-sm">
+                            {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))}
+                            <span className="block text-[0.625rem] text-ink-soft">
+                              deposit {formatNaira(depositFor(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm)))}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {errors.sizeSqm ? (
+                    <p role="alert" className="field-error mt-2">
+                      {errors.sizeSqm}
+                    </p>
+                  ) : null}
+                </section>
+
+                <section className="card-raised p-4 sm:p-5">
+                  <h2 className="text-[1.05rem]">2. Choose a house design</h2>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    Both designs are 4-bedroom duplexes. The design does not change the plot price.
+                  </p>
+
+                  <div className="mt-4 grid gap-2">
+                    {HOUSE_DESIGNS.map((design) => (
+                      <label
+                        key={design.id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-sm border px-3 py-2.5 transition-colors ${
+                          houseDesign === design.id
+                            ? 'border-forest bg-sage/50'
+                            : 'border-line bg-paper-2 hover:border-forest/40'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="design"
+                          className="accent-forest"
+                          value={design.id}
+                          checked={houseDesign === design.id}
+                          onChange={() => setHouseDesign(design.id)}
+                        />
+                        <span className="text-sm">{design.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="card-raised p-4 sm:p-5">
+                  <h2 className="text-[1.05rem]">3. Your cooperative details</h2>
+                  {signedIn ? (
+                    <p className="mt-1 text-xs text-ink-soft">
+                      Taken from your signed-in account. The cooperative matches payments using your ID number and name
+                      in the transfer narration.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-ink-soft">
+                      You do not need an account to apply. Enter the details on your cooperative record — the
+                      secretariat checks them against the register. Use your ID number and name in the transfer
+                      narration.
+                    </p>
+                  )}
+
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Field
+                        label="Full name"
+                        htmlFor="applicantName"
+                        hint={
+                          signedIn
+                            ? 'Changing this changes only the application; your account name stays as it is.'
+                            : 'As it appears on your cooperative record.'
+                        }
+                        error={errors.applicantName}
+                      >
+                        <input
+                          id="applicantName"
+                          name="applicantName"
+                          className={`input${errors.applicantName ? ' input-invalid' : ''}`}
+                          value={applicantName}
+                          onChange={(event) => setApplicantName(event.target.value)}
+                          autoComplete="name"
+                          placeholder="Aisha Bello"
+                          aria-invalid={Boolean(errors.applicantName)}
+                        />
+                      </Field>
+                    </div>
+
+                    <Field
+                      label="Cooperative ID number"
+                      htmlFor="memberNumber"
+                      hint="As it appears on your cooperative records."
+                      error={errors.memberNumber}
+                    >
+                      <input
+                        id="memberNumber"
+                        name="memberNumber"
+                        className={`input${errors.memberNumber ? ' input-invalid' : ''}`}
+                        value={memberNumber}
+                        onChange={(event) => setMemberNumber(event.target.value)}
+                        autoComplete="off"
+                        placeholder="CBN/2019/0417"
+                        aria-invalid={Boolean(errors.memberNumber)}
+                        aria-describedby={errors.memberNumber ? 'memberNumber-error' : 'memberNumber-hint'}
+                      />
+                    </Field>
+
+                    <Field label="Cadre" htmlFor="cadre" hint="Determines priority under the call." error={errors.cadre}>
+                      <select
+                        id="cadre"
+                        name="cadre"
+                        className="input"
+                        value={cadre}
+                        onChange={(event) => setCadre(event.target.value as Cadre)}
+                      >
+                        {CADRES.map((item) => (
+                          <option key={item} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+
+                  {signedIn ? (
+                    <div className="mt-4 rounded-sm border border-line bg-paper-3/50 px-3 py-3 text-xs leading-relaxed text-ink-soft">
+                      <p className="font-semibold text-ink">Signed in</p>
+                      <p className="mt-0.5">
+                        {applicantName || 'No name'} · {memberNumber || 'no ID number'}
+                      </p>
+                      <p className="mt-1">
+                        The application will appear on your application page as soon as it is submitted.
+                      </p>
+                    </div>
+                  ) : null}
+                </section>
+              </div>
+
+              <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+                <section className="card-raised p-4">
+                  <h2 className="text-[1.05rem]">What you will pay</h2>
+
+                  {selected ? (
+                    <>
+                      <div className="mt-3 flex items-baseline justify-between gap-3">
+                        <span className="text-sm text-ink-soft">{formatSqm(selected.sizeSqm)} plot</span>
+                        <span className="num font-display text-[1.4rem] leading-none text-forest">
+                          {formatNaira(amount)}
+                        </span>
+                      </div>
+                      <p className="num mt-1 text-xs text-ink-soft">
+                        {formatNaira(SCHEME.pricePerSqm)}/sqm × {selected.sizeSqm} sqm
+                      </p>
+
+                      <div className="mt-3">
+                        <Passbook allocated={selected.allocated} totalPlots={selected.totalPlots} />
+                        <p className="num mt-1 text-xs text-ink-soft">
+                          {remainingPlots(selected)} of {selected.totalPlots} plots still open
+                        </p>
+                      </div>
+
+                      <dl className="mt-4 divide-y divide-line border-t border-line text-sm">
+                        <div className="flex items-baseline justify-between gap-3 py-2">
+                          <dt className="text-ink-soft">Application fee</dt>
+                          <dd className="num">{formatNaira(SCHEME.applicationFee)}</dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3 py-2">
+                          <dt className="text-ink-soft">50% deposit</dt>
+                          <dd className="num">{formatNaira(depositFor(amount))}</dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3 py-2">
+                          <dt className="text-ink-soft">Balance</dt>
+                          <dd className="num">{formatNaira(amount - depositFor(amount))}</dd>
+                        </div>
+                      </dl>
+
+                      <p className="mt-3 text-xs leading-relaxed text-ink-soft">
+                        Pay by transfer to the cooperative's UBA project account, quoting your ID number and name. The
+                        bank details are in the call document; the secretariat confirms each payment.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-sm text-ink-soft">No plot sizes are open right now.</p>
+                  )}
+                </section>
+
+                <section className="card p-4">
+                  <h2 className="text-[1.05rem]">Before you continue</h2>
+                  <p className="mt-1.5 text-sm text-ink-soft">
+                    Step 2 sets out the refund, default, plot-size and title conditions. You will acknowledge each one
+                    before the application is created.
+                  </p>
+                </section>
+
+                <button type="submit" className="btn btn-primary w-full" disabled={!selected}>
+                  Continue to the conditions
+                </button>
+                <p className="text-center text-xs text-ink-soft">
+                  Applications close {formatDate(SCHEME.closesOn)}.
                 </p>
-              ) : null}
-            </section>
+              </aside>
+            </form>
+          ) : (
+            <form onSubmit={submit} noValidate className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+              <div className="space-y-4">
+                <section className="card-raised p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-[1.05rem]">Conditions of application</h2>
+                      <p className="mt-1 text-xs text-ink-soft">
+                        {TERMS_VERSION} · effective {formatDate(TERMS_EFFECTIVE_ON)}. Acknowledge each condition; the
+                        record stores the version and the date you accepted it.
+                      </p>
+                    </div>
+                    <span className="num rounded-full bg-paper-3 px-2.5 py-1 text-xs text-ink-soft">
+                      {accepted.length}/{TERMS_CLAUSES.length} acknowledged
+                    </span>
+                  </div>
 
-            <section className="card p-4">
-              <h2 className="text-[1.05rem]">How your place in the queue is decided</h2>
-              <p className="mt-1.5 text-sm text-ink-soft">
-                <span className="font-semibold text-ink">{policy.label}.</span> {policy.summary}
-              </p>
-              <p className="mt-1 text-xs text-ink-soft">
-                The secretariat sets this rule; the call gives both first-come and lower-cadre priority, and the
-                current reading is shown here and on your application.
-              </p>
-            </section>
+                  <ol className="mt-4 space-y-3">
+                    {TERMS_CLAUSES.map((clause) => {
+                      const checked = accepted.includes(clause.id);
+                      return (
+                        <li
+                          key={clause.id}
+                          className={`rounded-sm border px-3.5 py-3 transition-colors ${
+                            checked ? 'border-forest/35 bg-sage/40' : 'border-line bg-paper-2'
+                          }`}
+                        >
+                          <label className="flex cursor-pointer items-start gap-3">
+                            <input
+                              type="checkbox"
+                              className="mt-1 accent-forest"
+                              checked={checked}
+                              onChange={(event) => toggleClause(clause.id, event.target.checked)}
+                              aria-describedby={`${clause.id}-body`}
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold text-forest">{clause.title}</span>
+                              <span className="mt-0.5 block font-display text-[1.02rem] leading-snug">
+                                {clause.headline}
+                              </span>
+                              <span
+                                id={`${clause.id}-body`}
+                                className="mt-1.5 block text-sm leading-relaxed text-ink-soft"
+                              >
+                                {clause.body}
+                              </span>
+                              <span className="mt-1.5 block text-[0.6875rem] uppercase tracking-[0.06em] text-ink-soft">
+                                {clause.source}
+                              </span>
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ol>
 
-            <section className="card p-4">
-              <h2 className="text-[1.05rem]">What happens after you submit</h2>
-              <ol className="mt-2 space-y-1.5 text-sm text-ink-soft">
-                <li>1. Your application is created with a reference — nothing is allocated yet.</li>
-                <li>2. You upload the transfer receipt or bank evidence on the application page.</li>
-                <li>3. The secretariat verifies it, records the payment and its date, and your queue position is fixed.</li>
-                <li>
-                  4. Pay 50% by {formatDate(SCHEME.depositDueOn)} and the balance by {formatDate(SCHEME.balanceDueOn)}.
-                </li>
-              </ol>
-            </section>
-          </div>
+                  {errors.acceptedClauses ? (
+                    <p role="alert" className="field-error mt-3">
+                      {errors.acceptedClauses}
+                    </p>
+                  ) : null}
+                </section>
 
-          <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
-            <section className="card-raised p-4">
-              <h2 className="text-[1.05rem]">The application</h2>
-              <dl className="mt-3 space-y-2 text-sm">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink-soft">Applicant</dt>
-                  <dd className="text-right">{user.name}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink-soft">Cooperative ID</dt>
-                  <dd className="num">{memberNumber.toUpperCase()}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink-soft">Cadre</dt>
-                  <dd>{cadre}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink-soft">Plot</dt>
-                  <dd className="num">{selected ? formatSqm(selected.sizeSqm) : '—'}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink-soft">Design</dt>
-                  <dd className="text-right">
-                    {houseDesign === 'detached' ? 'Detached duplex' : 'Semi-detached duplex'}
-                  </dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3 border-t border-line pt-2">
-                  <dt className="text-ink-soft">Plot price</dt>
-                  <dd className="num font-semibold">{formatNaira(amount)}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-ink-soft">50% deposit</dt>
-                  <dd className="num">{formatNaira(depositFor(amount))}</dd>
-                </div>
-              </dl>
-            </section>
+                <section className="card p-4">
+                  <h2 className="text-[1.05rem]">How your place in the queue is decided</h2>
+                  <p className="mt-1.5 text-sm text-ink-soft">
+                    <span className="font-semibold text-ink">{policy.label}.</span> {policy.summary}
+                  </p>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    The secretariat sets this rule; the call gives both first-come and lower-cadre priority, and the
+                    current reading is shown here and on your application.
+                  </p>
+                </section>
 
-            <div className="flex flex-col gap-2">
-              <button type="submit" className="btn btn-primary w-full" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Submitting…' : 'Accept and submit application'}
-              </button>
-              <Button variant="ghost" onClick={() => setStep(1)} disabled={mutation.isPending}>
-                Back to plot and details
-              </Button>
-            </div>
-            <p className="text-center text-xs text-ink-soft">
-              Your acceptance is recorded with the application.
-            </p>
-          </aside>
-        </form>
-      )}
+                <section className="card p-4">
+                  <h2 className="text-[1.05rem]">What happens after you submit</h2>
+                  <ol className="mt-2 space-y-1.5 text-sm text-ink-soft">
+                    <li>1. Your application is created with a reference, shown on the next screen.</li>
+                    <li>
+                      2. Pay the {formatNaira(SCHEME.applicationFee)} fee and the 50% deposit by{' '}
+                      {formatDate(SCHEME.depositDueOn)}, quoting your ID number and name.
+                    </li>
+                    <li>3. The secretariat verifies the payment, records its date and fixes your queue position.</li>
+                    <li>
+                      4. Clear the balance by {formatDate(SCHEME.balanceDueOn)}. Sign in at any time to attach
+                      evidence and follow the balance.
+                    </li>
+                  </ol>
+                </section>
+              </div>
+
+              <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+                <section className="card-raised p-4">
+                  <h2 className="text-[1.05rem]">The application</h2>
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">Applicant</dt>
+                      <dd className="text-right">{applicantName || '—'}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">Cooperative ID</dt>
+                      <dd className="num">{memberNumber.toUpperCase() || '—'}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">Cadre</dt>
+                      <dd>{cadre}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">Plot</dt>
+                      <dd className="num">{selected ? formatSqm(selected.sizeSqm) : '—'}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">Design</dt>
+                      <dd className="text-right">
+                        {houseDesign === 'detached' ? 'Detached duplex' : 'Semi-detached duplex'}
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3 border-t border-line pt-2">
+                      <dt className="text-ink-soft">Plot price</dt>
+                      <dd className="num font-semibold">{formatNaira(amount)}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">50% deposit</dt>
+                      <dd className="num">{formatNaira(depositFor(amount))}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <div className="flex flex-col gap-2">
+                  <button type="submit" className="btn btn-primary w-full" disabled={mutation.isPending}>
+                    {mutation.isPending ? 'Submitting…' : 'Accept and submit application'}
+                  </button>
+                  <Button variant="ghost" onClick={() => setStep(1)} disabled={mutation.isPending}>
+                    Back to plot and details
+                  </Button>
+                </div>
+                <p className="text-center text-xs text-ink-soft">
+                  {signedIn
+                    ? 'Your acceptance is recorded with the application.'
+                    : 'You can apply without an account. Sign in later to track payments.'}
+                </p>
+              </aside>
+            </form>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

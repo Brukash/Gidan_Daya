@@ -29,16 +29,19 @@ const ROUTES = [
   { name: 'signin', path: '/signin', auth: false },
   { name: 'overview', path: '/app', auth: true },
   { name: 'plots', path: '/app/plots', auth: true },
-  { name: 'apply', path: '/app/apply?size=400', auth: true },
+  { name: 'apply', path: '/apply?size=400', auth: false },
   {
     name: 'apply-terms',
-    path: '/app/apply?size=400',
-    auth: true,
+    path: '/apply?size=400',
+    auth: false,
     action: async (page) => {
+      await page.getByLabel('Full name').fill('Ifeoma Nwosu');
+      await page.getByLabel('Cooperative ID number').fill('CBN/2021/0311');
       await page.getByRole('button', { name: /continue to the conditions/i }).click();
       await page.waitForTimeout(400);
     },
   },
+  { name: 'application-received', path: '/apply/received/GD-300-0012', auth: false },
   { name: 'application', path: '/app/application', auth: true },
   { name: 'application-review', path: '/app/application', auth: true, session: REVIEWER },
   { name: 'members', path: '/app/members', auth: true },

@@ -29,7 +29,7 @@ export function Plots() {
         title="Plot availability"
         description={`${totals.remaining} of ${totals.plots} plots remain. Allocation is first-come, first-served, determined by payment confirmation — with priority for Clerk to Assistant Manager cadre.`}
         actions={
-          <Link to="/app/apply" className="btn btn-primary">
+          <Link to="/apply" className="btn btn-primary">
             Apply for a plot
           </Link>
         }
@@ -70,7 +70,7 @@ export function Plots() {
                     Fully allocated
                   </button>
                 ) : (
-                  <Link to={`/app/apply?size=${tier.sizeSqm}`} className="btn btn-forest w-full text-sm">
+                  <Link to={`/apply?size=${tier.sizeSqm}`} className="btn btn-forest w-full text-sm">
                     Apply for {formatSqm(tier.sizeSqm)}
                   </Link>
                 )}

@@ -103,7 +103,7 @@ export function SchemeWindow() {
           </dl>
 
           <div className="mt-4 flex items-center gap-2">
-            <Link to={`/app/apply?size=${active.sizeSqm}`} className="btn btn-forest flex-1 text-sm">
+            <Link to={`/apply?size=${active.sizeSqm}`} className="btn btn-forest flex-1 text-sm">
               Apply for this plot
             </Link>
             <span className="num rounded-sm border border-line px-2 py-2 text-[0.6875rem] text-ink-soft">

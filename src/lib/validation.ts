@@ -31,6 +31,11 @@ export function applicationProblem(
 /** Step one of the application: the plot and the applicant's details. */
 export function applicationDetailsSchema(availableSizes: readonly number[]) {
   return z.object({
+    applicantName: z
+      .string()
+      .trim()
+      .min(3, 'Enter the full name on your cooperative record.')
+      .max(120, 'That name is too long.'),
     sizeSqm: z
       .number({ error: 'Choose a plot size.' })
       .refine((value) => availableSizes.includes(value), {

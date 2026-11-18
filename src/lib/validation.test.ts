@@ -41,6 +41,7 @@ describe('applicationDetailsSchema', () => {
   const schema = applicationDetailsSchema([300, 400]);
 
   const valid = {
+    applicantName: 'Aisha Bello',
     sizeSqm: 300,
     houseDesign: 'semi-detached' as const,
     memberNumber: 'CBN/2019/0417',
@@ -61,12 +62,21 @@ describe('applicationDetailsSchema', () => {
     expect(schema.safeParse({ ...valid, memberNumber: 'CBN 2019 0417' }).success).toBe(false);
     expect(schema.safeParse({ ...valid, memberNumber: 'CBN/2019/0417#' }).success).toBe(false);
   });
+
+  it('needs a full name, because an applicant may not be signed in', () => {
+    const result = schema.safeParse({ ...valid, applicantName: '  ' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe('Enter the full name on your cooperative record.');
+    }
+  });
 });
 
 describe('applicationSchema acceptance', () => {
   const schema = applicationSchema([300]);
 
   const base = {
+    applicantName: 'Aisha Bello',
     sizeSqm: 300,
     houseDesign: 'detached' as const,
     memberNumber: 'CBN/2019/0417',

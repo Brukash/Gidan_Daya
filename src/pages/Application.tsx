@@ -576,7 +576,7 @@ export function Application() {
           title="No application yet"
           body={`Applications close ${formatDate(SCHEME.closesOn)}. Choose a plot size and accept the conditions to start.`}
           action={
-            <Link to="/app/apply" className="btn btn-primary">
+            <Link to="/apply" className="btn btn-primary">
               Apply for a plot
             </Link>
           }
@@ -612,7 +612,7 @@ export function Application() {
             >
               Download statement
             </Button>
-            <Link to="/app/apply" className="btn btn-primary">
+            <Link to="/apply" className="btn btn-primary">
               Apply for another plot
             </Link>
           </>

@@ -99,7 +99,7 @@ function SiteHeader() {
           <Link to="/signin" className="btn btn-quiet hidden text-sm sm:inline-flex">
             Sign in
           </Link>
-          <Link to="/app/apply" className="btn btn-primary whitespace-nowrap text-sm">
+          <Link to="/apply" className="btn btn-primary whitespace-nowrap text-sm">
             Apply for a plot
           </Link>
         </div>
@@ -128,7 +128,7 @@ function Hero() {
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Link to="/app/apply" className="btn btn-primary">
+            <Link to="/apply" className="btn btn-primary">
               Start an application
             </Link>
             <a href="#plots" className="btn btn-ghost">
@@ -207,7 +207,7 @@ function PlotPrices() {
               {rows.map(({ tier, status, price }) => (
                 <tr key={tier.id}>
                   <td>
-                    <Link to={`/app/apply?size=${tier.sizeSqm}`} className="font-medium hover:underline">
+                    <Link to={`/apply?size=${tier.sizeSqm}`} className="font-medium hover:underline">
                       {formatSqm(tier.sizeSqm)}
                     </Link>
                   </td>
@@ -248,7 +248,7 @@ function PlotPrices() {
                   {formatNaira(price)} · deposit {formatCompactNaira(depositFor(price))}
                 </p>
               </div>
-              <Link to={`/app/apply?size=${tier.sizeSqm}`} className="btn btn-ghost mt-3 w-full text-sm">
+              <Link to={`/apply?size=${tier.sizeSqm}`} className="btn btn-ghost mt-3 w-full text-sm">
                 Apply for {formatSqm(tier.sizeSqm)}
               </Link>
             </li>
@@ -385,12 +385,13 @@ function ClosingCta() {
             Choose a size, then secure your position.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-paper/75">
-            Sign in with your cooperative membership details to apply. If this deployment is not yet connected to
-            Supabase, it runs on sample data so you can walk the full flow.
+            No account needed to apply: pick a size, acknowledge the conditions and submit. Sign in afterwards if you
+            want to attach payment evidence and follow the balance. If this deployment is not yet connected to Supabase,
+            it runs on sample data so you can walk the full flow.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link to="/app/apply" className="btn btn-primary">
+          <Link to="/apply" className="btn btn-primary">
             Apply for a plot
           </Link>
           <Link to="/signin" className="btn btn-quiet text-paper" style={{ borderColor: 'rgba(247,243,234,0.32)', borderWidth: 1 }}>

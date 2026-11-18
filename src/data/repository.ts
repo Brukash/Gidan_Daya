@@ -85,7 +85,8 @@ interface TierRow {
 interface ApplicationRow {
   id: string;
   reference: string;
-  member_id: string;
+  applicant_name?: string | null;
+  member_id: string | null;
   member_number: string;
   cadre: Cadre;
   size_sqm: number;
@@ -146,8 +147,8 @@ function mapApplication(row: ApplicationRow, memberName: string): Application {
   return {
     id: row.id,
     reference: row.reference,
-    memberId: row.member_id,
-    memberName,
+    memberId: row.member_id ?? `guest:${row.member_number}`,
+    memberName: memberName || row.applicant_name || '',
     memberNumber: row.member_number,
     cadre: row.cadre,
     sizeSqm: row.size_sqm,
@@ -211,11 +212,68 @@ export async function listApplications(memberId?: string): Promise<Application[]
   const members = await listMembers();
   const names = new Map(members.map((member) => [member.id, member.name] as const));
 
-  return rows.map((row) => mapApplication(row, names.get(row.member_id) ?? ''));
+  return rows.map((row) => mapApplication(row, names.get(row.member_id ?? '') ?? ''));
+}
+
+/**
+ * Opens an application with the two things its applicant already knows: the
+ * reference and the cooperative ID. Used by the public receipt page.
+ */
+export async function getApplicationByReference(
+  reference: string,
+  memberNumber: string,
+): Promise<Application | null> {
+  const ref = reference.trim().toUpperCase();
+  const id = memberNumber.trim().toUpperCase();
+  if (!ref || !id) return null;
+
+  if (!supabase) {
+    return (
+      sampleApplications().find(
+        (item) => item.reference.toUpperCase() === ref && item.memberNumber.toUpperCase() === id,
+      ) ?? null
+    );
+  }
+
+  const { data, error } = await supabase.rpc('get_public_application', {
+    p_reference: ref,
+    p_member_number: id,
+  });
+  if (error) throw new Error(error.message);
+  const row = (Array.isArray(data) ? data[0] : data) as ApplicationRow | null;
+  return row ? mapApplication(row, row.applicant_name ?? '') : null;
 }
 
 export async function listMembers(): Promise<Member[]> {
-  if (!supabase) return SAMPLE_MEMBERS;
+  if (!supabase) {
+    // Applications made without an account still appear in the secretariat's
+    // register, grouped by the cooperative ID the applicant supplied.
+    const guests = new Map<string, Member>();
+    for (const application of sampleApplications()) {
+      if (!application.memberId.startsWith('guest:')) continue;
+      const key = application.memberNumber.toUpperCase();
+      if (SAMPLE_MEMBERS.some((member) => member.memberNumber.toUpperCase() === key)) continue;
+
+      const existing = guests.get(key);
+      if (existing) {
+        existing.plots += 1;
+        existing.committed += application.amount;
+      } else {
+        guests.set(key, {
+          id: application.memberId,
+          name: application.memberName,
+          email: '',
+          memberNumber: application.memberNumber,
+          cadre: application.cadre,
+          role: 'member',
+          joinedOn: application.createdAt,
+          plots: 1,
+          committed: application.amount,
+        });
+      }
+    }
+    return [...SAMPLE_MEMBERS, ...guests.values()];
+  }
 
   const { data, error } = await supabase
     .from('profiles')
@@ -243,7 +301,8 @@ export async function listMembers(): Promise<Member[]> {
 }
 
 export interface NewApplication {
-  memberId: string;
+  /** Null for an application made without an account. */
+  memberId: string | null;
   memberName: string;
   memberNumber: string;
   cadre: Cadre;
@@ -258,14 +317,24 @@ export async function createApplication(input: NewApplication): Promise<Applicat
   const acceptedAt = new Date().toISOString();
 
   if (supabase) {
-    const { data, error } = await supabase.rpc('create_plot_application', {
-      p_size_sqm: input.sizeSqm,
-      p_house_design: input.houseDesign,
-      p_member_number: input.memberNumber,
-      p_cadre: input.cadre,
-      p_accepted_clauses: input.acceptedClauses,
-      p_terms_version: TERMS_VERSION,
-    });
+    const { data, error } = input.memberId
+      ? await supabase.rpc('create_plot_application', {
+          p_size_sqm: input.sizeSqm,
+          p_house_design: input.houseDesign,
+          p_member_number: input.memberNumber,
+          p_cadre: input.cadre,
+          p_accepted_clauses: input.acceptedClauses,
+          p_terms_version: TERMS_VERSION,
+        })
+      : await supabase.rpc('create_public_application', {
+          p_size_sqm: input.sizeSqm,
+          p_house_design: input.houseDesign,
+          p_member_number: input.memberNumber,
+          p_cadre: input.cadre,
+          p_applicant_name: input.memberName,
+          p_accepted_clauses: input.acceptedClauses,
+          p_terms_version: TERMS_VERSION,
+        });
     if (error) throw new Error(error.message);
     const row = (Array.isArray(data) ? data[0] : data) as ApplicationRow | null;
     if (!row) throw new Error('The application was created but no record was returned.');
@@ -273,18 +342,20 @@ export async function createApplication(input: NewApplication): Promise<Applicat
   }
 
   const existing = localRows<Application>(KEYS.applications);
-  const sequence =
-    SAMPLE_APPLICATIONS.filter((item) => item.sizeSqm === input.sizeSqm).length +
-    existing.filter(
-      (item) =>
-        item.sizeSqm === input.sizeSqm && !SAMPLE_APPLICATIONS.some((sample) => sample.id === item.id),
-    ).length +
-    1;
+  const sameSize = [...SAMPLE_APPLICATIONS, ...existing].filter((item) => item.sizeSqm === input.sizeSqm);
+  const highestUsed = sameSize.reduce((max, item) => {
+    const parsed = Number(item.reference.split('-').pop());
+    return Number.isNaN(parsed) ? max : Math.max(max, parsed);
+  }, 0);
+  const tier = applyLocalAllocations(SAMPLE_TIERS).find((item) => item.sizeSqm === input.sizeSqm);
+  // The reference continues the plot numbering, so a new application cannot
+  // reuse a number already used on that tier.
+  const sequence = Math.max(highestUsed, tier?.allocated ?? 0) + 1;
 
   const created: Application = {
     id: `local-${Date.now()}`,
     reference: `GD-${input.sizeSqm}-${String(sequence).padStart(4, '0')}`,
-    memberId: input.memberId,
+    memberId: input.memberId ?? `guest:${input.memberNumber}`,
     memberName: input.memberName,
     memberNumber: input.memberNumber,
     cadre: input.cadre,

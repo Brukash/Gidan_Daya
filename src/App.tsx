@@ -5,6 +5,7 @@ import { SessionProvider, useSession } from './auth/session';
 import { AppShell } from './components/AppShell';
 import { LoadingBlock, ToastProvider } from './components/ui';
 import { Application } from './pages/Application';
+import { ApplicationReceived } from './pages/ApplicationReceived';
 import { Apply } from './pages/Apply';
 import { Landing } from './pages/Landing';
 import { Members } from './pages/Members';
@@ -60,12 +61,14 @@ export default function App() {
             <ScrollToTop />
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/apply" element={<Apply />} />
+              <Route path="/apply/received/:reference" element={<ApplicationReceived />} />
+              <Route path="/app/apply" element={<Navigate to="/apply" replace />} />
               <Route path="/signin" element={<SignIn />} />
               <Route path="/app" element={<RequireAuth />}>
                 <Route element={<AppShell />}>
                   <Route index element={<Overview />} />
                   <Route path="plots" element={<Plots />} />
-                  <Route path="apply" element={<Apply />} />
                   <Route path="application" element={<Application />} />
                   <Route path="members" element={<Members />} />
                   <Route path="reports" element={<Reports />} />

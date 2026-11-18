@@ -67,7 +67,7 @@ export function Overview() {
         title={`Good to see you, ${user?.name.split(' ')[0] ?? 'member'}.`}
         description={`Plots from 200 to 500 sqm at ${formatNaira(SCHEME.pricePerSqm)} per sqm. Applications close ${formatDate(SCHEME.closesOn)}.`}
         actions={
-          <Link to="/app/apply" className="btn btn-primary">
+          <Link to="/apply" className="btn btn-primary">
             Apply for a plot
           </Link>
         }
@@ -129,7 +129,7 @@ export function Overview() {
                   return (
                     <tr key={tier.id}>
                       <td>
-                        <Link to={`/app/apply?size=${tier.sizeSqm}`} className="block hover:underline">
+                        <Link to={`/apply?size=${tier.sizeSqm}`} className="block hover:underline">
                           <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
                           <span className="num text-xs text-ink-soft">
                             {remainingPlots(tier)} of {tier.totalPlots} left
@@ -161,7 +161,7 @@ export function Overview() {
               return (
                 <li key={tier.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
-                    <Link to={`/app/apply?size=${tier.sizeSqm}`} className="min-w-0">
+                    <Link to={`/apply?size=${tier.sizeSqm}`} className="min-w-0">
                       <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
                       <span className="num block text-xs text-ink-soft">
                         {remainingPlots(tier)} of {tier.totalPlots} left
@@ -228,7 +228,7 @@ export function Overview() {
                   No application on record for your membership number yet. Choose a plot size and pay the ₦20,000 fee
                   to start.
                 </p>
-                <Link to="/app/apply" className="btn btn-forest mt-3 w-full text-sm">
+                <Link to="/apply" className="btn btn-forest mt-3 w-full text-sm">
                   Apply for a plot
                 </Link>
               </div>
