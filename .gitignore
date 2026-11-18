@@ -39,3 +39,6 @@ design/mitems-studio-os/
 # Deployment + design evidence (local only)
 .vercel/
 design/shots/
+
+.vercel
+.env*
