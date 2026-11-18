@@ -14,7 +14,19 @@
 
 **Goal:** a member can go from "what sizes are left?" to a submitted application in under a minute, and the secretariat can see the allocation and export it in two clicks.
 
-**Source of truth:** the cooperative's *Call for Indication of Interest — Gidan Daya* (supplied by the user). Plot counts, sizes, the rate per square metre, the fee, the payment dates, the closing date, the site-visit dates and the allocation/refund/title conditions come from that document. Sample availability figures are labelled as sample data, never presented as the cooperative's actual allocation.
+**Source of truth:** `design/SCHEME_FACTS.md`, which records the scheme exactly as the cooperative's *Call for Indication of Interest — Gidan Daya* states it: the 102-plot inventory, the rate per square metre, the fee, the closing and payment dates, the allocation rule, the default/refund/title conditions and the site visits, plus the conflicts the document leaves open. Precedence is **the call document → `SCHEME_FACTS.md` → this brief → the code**; a figure that disagrees with the facts file is a bug, not a preference. Sample availability figures and demo applicants are labelled as sample data, never presented as the cooperative's actual allocation.
+
+## Data model versus the real scheme
+
+The model is judged against `design/SCHEME_FACTS.md`, not against the sample data it ships with. Three buckets:
+
+**Represented 1:1.** Plot inventory (4 × 200, 44 × 300, 44 × 400, 10 × 500 = 102), the ₦27,000/sqm rate inclusive of infrastructure, the non-refundable ₦20,000 fee, the two 4-bedroom designs, applications closing 30 December 2026, the 50% deposit by 30 January 2027 and balance by 30 June 2027, size variation with unconditional refund of excess, default and penalty conditions, the refund conditions (written request, resale first, up to 5%, infrastructure non-refundable, months not guaranteed), title-perfection costs and the temporary/permanent letter rule, the site-visit dates, time and meeting point, and the acceptance statements. Each lives in `src/data/seed.ts`, `src/data/terms.ts` or the migration, and `src/data/scheme.test.ts` pins the seeded figures so drift fails the suite.
+
+**Represented as a decision, because the document contradicts itself.** Allocation says *strictly first-come by payment confirmation* and also *priority to Clerk–Assistant Manager*. The model records the confirmed payment date per application (`confirmedOn`), and applies one of three explicit rules chosen by the secretariat — first-come, payment date then cadre (default), or cadre first. The rule in force is visible to applicants with the reason for their position, and every change is audited. That is the honest treatment of a document that does not say what happens when a senior cadre pays first.
+
+**Deliberately not modelled.** Transfer and assignment, dispute resolution and governing law, cooperative project-loan funding, the construction milestones behind the permanent allocation letter, and the actual penalty rate (the document only says "prevailing project loan rate"). These are listed as gaps in the facts file so the app is not mistaken for a complete implementation of every clause.
+
+**Ours, not the document's.** The evidence-verification workflow, the audit trail, the three-option rule setting, sample applicants and availability, the five-cadre list (the call names only the ends of the priority band), and the 5 MB upload limit. Each is labelled as an addition in the facts file.
 
 ## Stack and constraints
 
@@ -79,7 +91,8 @@ See `design/ASSETS.md`. Everything shipped is code-drawn (SVG/CSS) or self-hoste
 2. Photography: the Gidan Daya site, the layout plan and the show houses (with permission for the people shown).
 3. A Supabase project (URL + anon key) to replace sample data; the initial migration has never been executed, so the schema and RLS are unverified.
 4. Official legal/registration details for the footer (none were invented).
-5. **Open questions for the cooperative:** (a) applications close 30 December 2026, but the 50% deposit is not due until 30 January 2027 — does an application without a deposit hold a plot? (b) "first-come by payment confirmation" and priority for Clerk-to-Assistant-Manager cadre can disagree; which wins when a senior cadre pays first? The app currently states both rules as written and ranks priority only within the same payment date.
+5. **Open questions for the cooperative** (full list in `design/SCHEME_FACTS.md` §11): (a) applications close 30 December 2026 but the 50% deposit is not due until 30 January 2027 — does an application without a deposit hold a plot? (b) "first-come by payment confirmation" and priority for Clerk-to-Assistant-Manager cadre can disagree; which wins when a senior cadre pays first? (c) what exactly counts as "payment confirmation" — the fee, the 50% deposit, or full payment? (d) what is the prevailing project loan rate used for default interest?
+6. **Bank details are intentionally absent from the repository.** The call names the UBA project account and its number; the number is not committed here. If the app is later asked to display payment instructions, load them from server-side configuration at deployment, never from the repo or the browser bundle.
 
 ## Status checklist
 
@@ -101,6 +114,7 @@ See `design/ASSETS.md`. Everything shipped is code-drawn (SVG/CSS) or self-hoste
 
 ## Decision log
 
+- **2026-11-18 — The call document is the source of truth, recorded in `design/SCHEME_FACTS.md`.** Facts, the conflicts they contain, the mapping from each fact to code and the deliberate gaps now live in one file; the brief, the data model and the tests are judged against it rather than against invented sample data. `src/data/scheme.test.ts` asserts the seeded figures so a drift fails the build. The document's bank account number is deliberately not copied into the repository: it is a payment destination published in the call, and the app refers members to "the UBA project account in the document".
 - **2026-11-18 — Acceptance, evidence and a configurable rule.** Applying is now two steps: plot and details, then four acknowledgement clauses (refunds, default penalties, plot-size variation, title perfection). The clause ids, terms version and timestamp are stored on the application and shown back on it. Payment evidence is attached to an application and reviewed by the secretariat, which records the payment, its confirmation date and an audit entry carrying the reviewer's note. The allocation rule — first-come, date-then-cadre, or cadre-first — is a secretariat setting that orders the queue and is shown to applicants with the reason for their position. Reason: the call's conditions need a record that can be defended, and its two allocation sentences conflict, so the reading has to be explicit and auditable rather than buried in code.
 - **2026-11-18 — Evidence in sample mode is a data URL.** With no Supabase Storage, uploads are validated (type, size), kept under 1.5 MB as a preview in local storage, and labelled sample data. In Supabase mode the file goes to a private `payment-evidence` bucket and only the path is stored. Reason: the flow must be demonstrable without a backend, without pretending a real bucket exists.
 - **2026-11-18 — Single scheme, not a catalogue.** The user's correction ("just for Gidan Daya subscription") replaced the six-project subscription model with one scheme: four plot tiers priced per square metre, one application per plot, a 50% deposit and a balance, and a secretariat that verifies payments. Reason: the cooperative's call is for one estate, and a multi-project catalogue invented a product that does not exist.
