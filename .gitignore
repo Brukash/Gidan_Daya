@@ -32,3 +32,10 @@ npm-debug.log*
 
 # TypeScript build artefacts
 *.tsbuildinfo
+
+# Third-party design manual (clone on demand; see design/MITEMS_INDEX.md)
+design/mitems-studio-os/
+
+# Deployment + design evidence (local only)
+.vercel/
+design/shots/
