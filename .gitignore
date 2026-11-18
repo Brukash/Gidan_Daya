@@ -42,3 +42,4 @@ design/shots/
 
 .vercel
 .env*
+!.env.example
