@@ -73,7 +73,7 @@ Read as search results/summaries on 2026-11-18, **not** captured as screenshots.
 
 | Slot | Choice | Why |
 |---|---|---|
-| Header | Minimal bar (wordmark, 3 links, ghost "Sign in", primary "Open dashboard") | Calm, product-first; matches the ledger tone |
+| Header | Minimal bar (seal + wordmark, 3 links, ghost "Sign in", primary "Apply for a plot") | Calm, product-first; the real seal carries the identity |
 | Hero | Split asymmetric: editorial type left, interactive plot window right | Shows the product instead of describing it |
 | Proof | **None** — no real logos, counts or quotes exist | Honesty rule: an empty proof strip is worse than none |
 | Sections | Plot prices table, two-instalment payment plan (01–03), site visits, conditions | Each answers a real question: what is left, what does it cost, when do I pay, what am I agreeing to |
@@ -83,11 +83,11 @@ Read as search results/summaries on 2026-11-18, **not** captured as screenshots.
 
 ## Asset plan / what the user will supply
 
-See `design/ASSETS.md`. Everything shipped is code-drawn (SVG/CSS) or self-hosted type. Photography of the estate, the layout plan and the cooperative's real logo are **missing** and are the user's to supply; nothing was faked in their place.
+- **Brand mark:** the cooperative's own seal, supplied by the user, trimmed to the medallion and used in the app rail, the landing header, sign-in, the footer and as the favicon/app icon. Its gold already agrees with the `gold` token, so the palette is unchanged. Everything else shipped is code-drawn (SVG/CSS) or self-hosted type. Photography of the estate and the layout plan is **missing** and is the user's to supply; nothing was faked in its place. See `design/ASSETS.md`.
 
 ## Missing assets / open questions
 
-1. Real cooperative logo and any official colour/type guidelines.
+1. Official colour/type guidelines, and a vector or higher-resolution copy of the seal — the supplied file is 200 × 200 px, so larger uses are upscaled.
 2. Photography: the Gidan Daya site, the layout plan and the show houses (with permission for the people shown).
 3. A Supabase project (URL + anon key) to replace sample data; the initial migration has never been executed, so the schema and RLS are unverified.
 4. Official legal/registration details for the footer (none were invented).
@@ -114,6 +114,7 @@ See `design/ASSETS.md`. Everything shipped is code-drawn (SVG/CSS) or self-hoste
 
 ## Decision log
 
+- **2026-11-18 — The cooperative's seal replaces the invented mark.** The user supplied the seal and asked for the app to be branded with it. It is trimmed from its transparent 200 × 200 WebP to the medallion, rendered at 32–512 px, and used in the rail, landing header, sign-in, footer and as the icon set; the hand-drawn `favicon.svg` was deleted so two marks do not compete. It is used as supplied — not redrawn, recoloured or cropped into a badge. Reason: a real cooperative should look like itself, and an invented mark is a fact the project cannot support. Limitation: the source is 200 px, so large sizes are upscaled.
 - **2026-11-18 — The call document is the source of truth, recorded in `design/SCHEME_FACTS.md`.** Facts, the conflicts they contain, the mapping from each fact to code and the deliberate gaps now live in one file; the brief, the data model and the tests are judged against it rather than against invented sample data. `src/data/scheme.test.ts` asserts the seeded figures so a drift fails the build. The document's bank account number is deliberately not copied into the repository: it is a payment destination published in the call, and the app refers members to "the UBA project account in the document".
 - **2026-11-18 — Acceptance, evidence and a configurable rule.** Applying is now two steps: plot and details, then four acknowledgement clauses (refunds, default penalties, plot-size variation, title perfection). The clause ids, terms version and timestamp are stored on the application and shown back on it. Payment evidence is attached to an application and reviewed by the secretariat, which records the payment, its confirmation date and an audit entry carrying the reviewer's note. The allocation rule — first-come, date-then-cadre, or cadre-first — is a secretariat setting that orders the queue and is shown to applicants with the reason for their position. Reason: the call's conditions need a record that can be defended, and its two allocation sentences conflict, so the reading has to be explicit and auditable rather than buried in code.
 - **2026-11-18 — Evidence in sample mode is a data URL.** With no Supabase Storage, uploads are validated (type, size), kept under 1.5 MB as a preview in local storage, and labelled sample data. In Supabase mode the file goes to a private `payment-evidence` bucket and only the path is stored. Reason: the flow must be demonstrable without a backend, without pretending a real bucket exists.

@@ -49,9 +49,20 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col bg-forest px-3 py-5 text-paper">
-      <div className="px-2">
-        <p className="font-display text-[1.35rem] leading-none tracking-[-0.03em]">Gidan Daya</p>
-        <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.14em] text-paper/55">CBN Staff Cooperative</p>
+      <div className="flex items-start gap-2.5 px-2">
+        <img
+          src="/brand/coop-seal-64.png"
+          alt=""
+          width={40}
+          height={40}
+          className="mt-0.5 h-10 w-10 shrink-0"
+        />
+        <div className="min-w-0">
+          <p className="font-display text-[1.3rem] leading-none tracking-[-0.03em]">Gidan Daya</p>
+          <p className="mt-1 text-[0.625rem] uppercase leading-[1.35] tracking-[0.1em] text-paper/55">
+            CBN Staff Multipurpose Cooperative Society
+          </p>
+        </div>
       </div>
 
       <div className="my-5 h-px bg-paper/15" />
@@ -137,7 +148,8 @@ export function AppShell() {
                 </svg>
                 Menu
               </button>
-              <div className="lg:hidden">
+              <div className="flex items-center gap-2 lg:hidden">
+                <img src="/brand/coop-seal-64.png" alt="" width={24} height={24} className="h-6 w-6" />
                 <p className="font-display text-base leading-none">Gidan Daya</p>
               </div>
               <p className="hidden text-sm text-ink-soft lg:block">

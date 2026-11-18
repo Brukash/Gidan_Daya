@@ -53,12 +53,19 @@ export function SignIn() {
 
       <main id="main" className="flex flex-col px-5 py-8 sm:px-10 lg:px-14">
         <Link to="/" className="inline-flex items-center gap-2.5 self-start">
-          <svg aria-hidden viewBox="0 0 32 32" className="h-7 w-7">
-            <rect width="32" height="32" rx="7" fill="#123628" />
-            <path d="M8 9h10.5a4.5 4.5 0 0 1 0 9H8" stroke="#F7F3EA" strokeWidth="2.4" fill="none" strokeLinecap="square" />
-            <path d="M8 18h11" stroke="#B8862B" strokeWidth="2.4" strokeLinecap="square" />
-          </svg>
-          <span className="font-display text-[1.15rem] leading-none tracking-[-0.03em]">Gidan Daya</span>
+          <img
+            src="/brand/coop-seal-64.png"
+            alt=""
+            width={34}
+            height={34}
+            className="h-[34px] w-[34px]"
+          />
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-[1.15rem] leading-none tracking-[-0.03em]">Gidan Daya</span>
+            <span className="mt-1 text-[0.625rem] uppercase leading-none tracking-[0.1em] text-ink-soft">
+              CBN Staff Multipurpose Cooperative Society
+            </span>
+          </span>
         </Link>
 
         <div className="mt-12 w-full max-w-md lg:mt-20">
