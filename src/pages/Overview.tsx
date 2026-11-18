@@ -10,14 +10,17 @@ import {
   Passbook,
   TierPill,
 } from '../components/ui';
-import { listApplications, listTiers } from '../data/repository';
+import { getSettings, listApplications, listTiers } from '../data/repository';
 import { SCHEME, SITE_VISIT } from '../data/seed';
 import {
   allocationPercent,
+  describePolicy,
   describeTier,
   milestoneLabel,
   outstandingFor,
+  positionReason,
   priceForPlot,
+  queuePosition,
   remainingPlots,
   schemeTotals,
   sumBy,
@@ -33,6 +36,7 @@ export function Overview() {
     enabled: Boolean(user),
   });
   const allQuery = useQuery({ queryKey: ['applications', 'all'], queryFn: () => listApplications() });
+  const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
   if (tiersQuery.isLoading || mineQuery.isLoading) return <LoadingBlock />;
   if (tiersQuery.isError) {
@@ -45,6 +49,8 @@ export function Overview() {
   const totals = schemeTotals(tiers, SCHEME);
 
   const latest = mine[0];
+  const policy = describePolicy(settingsQuery.data?.allocationPolicy ?? 'cadre-priority-same-day');
+  const position = latest ? queuePosition(all, latest, policy.id) : null;
   const collected = sumBy(all, (item) => item.paid);
   const committed = sumBy(all, (item) => item.amount);
 
@@ -90,7 +96,7 @@ export function Overview() {
         />
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.55fr_1fr]">
+      <div className="grid items-start gap-6 xl:grid-cols-[1.55fr_1fr]">
         <section aria-labelledby="availability-heading" className="card-raised overflow-hidden">
           <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-4 py-3">
             <div>
@@ -188,6 +194,12 @@ export function Overview() {
                 </div>
                 <p className="num mt-1.5 text-xs text-ink-soft">
                   {latest.reference} · {latest.houseDesign === 'detached' ? 'Detached duplex' : 'Semi-detached duplex'}
+                </p>
+                <p className="mt-1.5 rounded-sm bg-paper-3/60 px-2 py-1.5 text-xs leading-snug text-ink-soft">
+                  <span className="font-semibold text-ink">
+                    {position ? `Queue position ${position}` : 'Queue position pending'}
+                  </span>{' '}
+                  · {policy.label}. {positionReason(latest, policy.id)}
                 </p>
                 <dl className="mt-3 border-t border-line pt-3 text-sm">
                   <div className="flex items-baseline justify-between gap-3 py-1">

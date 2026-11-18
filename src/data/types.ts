@@ -6,6 +6,19 @@ export type ApplicationStatus = 'reserved' | 'deposit-paid' | 'fully-paid' | 'al
 
 export type MemberRole = 'member' | 'admin';
 
+/**
+ * How the queue is ordered. The call says allocation is first-come by payment
+ * confirmation, and also that lower cadres get priority; these settings are the
+ * three readings of that, chosen by the secretariat.
+ */
+export type AllocationPolicy = 'first-come' | 'cadre-priority-same-day' | 'cadre-priority';
+
+export type PaymentKind = 'application-fee' | 'deposit' | 'balance';
+
+export type EvidenceStatus = 'pending' | 'verified' | 'rejected';
+
+export type ReviewDecision = 'verified' | 'rejected';
+
 export interface Scheme {
   name: string;
   estate: string;
@@ -18,6 +31,10 @@ export interface Scheme {
   closesOn: string;
   depositDueOn: string;
   balanceDueOn: string;
+}
+
+export interface SchemeSettings {
+  allocationPolicy: AllocationPolicy;
 }
 
 export interface PlotTier {
@@ -42,6 +59,13 @@ export interface Application {
   feePaid: boolean;
   status: ApplicationStatus;
   createdAt: string;
+  /** Date the deposit or full payment was confirmed; null until then. */
+  confirmedOn: string | null;
+  /** Version of the acceptance text the applicant agreed to. */
+  termsVersion: string;
+  acceptedAt: string;
+  /** Clause ids the applicant acknowledged, one by one. */
+  acceptedClauses: string[];
 }
 
 export interface Member {
@@ -54,6 +78,35 @@ export interface Member {
   joinedOn: string;
   plots: number;
   committed: number;
+}
+
+/** A receipt or bank evidence file attached to an application. */
+export interface PaymentEvidence {
+  id: string;
+  applicationId: string;
+  applicationReference: string;
+  kind: PaymentKind;
+  amount: number;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  /** Data URL in sample mode; null when the file lives in storage. */
+  preview: string | null;
+  status: EvidenceStatus;
+  uploadedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+}
+
+/** Append-only record of who did what, so a decision can be defended later. */
+export interface AuditEvent {
+  id: string;
+  applicationId: string | null;
+  actor: string;
+  action: string;
+  note: string;
+  at: string;
 }
 
 export type DataMode = 'supabase' | 'sample';

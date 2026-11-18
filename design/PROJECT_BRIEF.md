@@ -90,7 +90,10 @@ See `design/ASSETS.md`. Everything shipped is code-drawn (SVG/CSS) or self-hoste
 | Sign in | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
 | Dashboard overview | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
 | Plot availability | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
-| Apply for a plot (validation, live pricing) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
+| Apply — plot and details (validation, live pricing) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
+| Apply — four acceptance clauses, recorded with version and time | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
+| Payment evidence upload + secretariat verification + audit note | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
+| Scheme settings — allocation rule with queue preview | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
 | My application + statement PDF | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
 | Applicant register (admin) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
 | Allocation report + PDF/XLSX exports | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 1440/390 | ✓ |
@@ -98,6 +101,8 @@ See `design/ASSETS.md`. Everything shipped is code-drawn (SVG/CSS) or self-hoste
 
 ## Decision log
 
+- **2026-11-18 — Acceptance, evidence and a configurable rule.** Applying is now two steps: plot and details, then four acknowledgement clauses (refunds, default penalties, plot-size variation, title perfection). The clause ids, terms version and timestamp are stored on the application and shown back on it. Payment evidence is attached to an application and reviewed by the secretariat, which records the payment, its confirmation date and an audit entry carrying the reviewer's note. The allocation rule — first-come, date-then-cadre, or cadre-first — is a secretariat setting that orders the queue and is shown to applicants with the reason for their position. Reason: the call's conditions need a record that can be defended, and its two allocation sentences conflict, so the reading has to be explicit and auditable rather than buried in code.
+- **2026-11-18 — Evidence in sample mode is a data URL.** With no Supabase Storage, uploads are validated (type, size), kept under 1.5 MB as a preview in local storage, and labelled sample data. In Supabase mode the file goes to a private `payment-evidence` bucket and only the path is stored. Reason: the flow must be demonstrable without a backend, without pretending a real bucket exists.
 - **2026-11-18 — Single scheme, not a catalogue.** The user's correction ("just for Gidan Daya subscription") replaced the six-project subscription model with one scheme: four plot tiers priced per square metre, one application per plot, a 50% deposit and a balance, and a secretariat that verifies payments. Reason: the cooperative's call is for one estate, and a multi-project catalogue invented a product that does not exist.
 - **2026-11-18 — Sample-data mode.** No Supabase credentials exist, so the repository layer serves labelled sample data and switches to Supabase when env vars are present. Reason: the deliverable must build and deploy, and the UI must never claim live data it does not have.
 - **2026-11-18 — No proof strip / no testimonials.** Reason: none are real. Article: honesty rule 4.

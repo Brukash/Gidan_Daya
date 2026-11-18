@@ -1,14 +1,17 @@
 -- Gidan Daya — initial schema
--- One estate, four plot sizes, plot applications. Access rules live in the
--- database (RLS), not in the browser.
+-- One estate, four plot sizes, plot applications, payment evidence, an audit
+-- trail and a configurable allocation rule. Access rules live in the database
+-- (RLS), not in the browser.
 --
--- NOTE: this migration has never been executed: no Supabase project exists yet,
--- so nothing here has been run or tested against Postgres.
+-- NOTE: this migration has never been executed. No Supabase project exists for
+-- this workspace, so nothing here has been run or tested against Postgres.
 
 create type public.member_role as enum ('member', 'admin');
 create type public.cadre as enum ('Clerk', 'Executive Officer', 'Assistant Manager', 'Manager', 'Senior Manager');
 create type public.house_design as enum ('semi-detached', 'detached');
 create type public.application_status as enum ('reserved', 'deposit-paid', 'fully-paid', 'allocated');
+create type public.payment_kind as enum ('application-fee', 'deposit', 'balance');
+create type public.evidence_status as enum ('pending', 'verified', 'rejected');
 
 -- ---------------------------------------------------------------------------
 -- Tables
@@ -27,7 +30,8 @@ create table public.profiles (
 
 comment on table public.profiles is 'One row per cooperative member, keyed to auth.users.';
 
--- Single-row table: the published terms of this scheme.
+-- Single-row table: the published terms of this scheme, plus the allocation
+-- rule the secretariat has chosen.
 create table public.scheme (
   id boolean primary key default true check (id),
   name text not null,
@@ -37,9 +41,14 @@ create table public.scheme (
   closes_on date not null,
   deposit_due_on date not null,
   balance_due_on date not null,
+  allocation_policy text not null default 'cadre-priority-same-day'
+    check (allocation_policy in ('first-come', 'cadre-priority-same-day', 'cadre-priority')),
   constraint scheme_closes_after_opens check (closes_on > opens_on),
   constraint scheme_deposit_before_balance check (balance_due_on > deposit_due_on)
 );
+
+comment on column public.scheme.allocation_policy is
+  'first-come = payment date only; cadre-priority-same-day = date then lower cadre; cadre-priority = lower cadre first regardless of date.';
 
 insert into public.scheme (id, name, price_per_sqm, application_fee, opens_on, closes_on, deposit_due_on, balance_due_on)
 values (true, 'Gidan Daya residential plots', 27000, 20000, '2026-11-03', '2026-12-30', '2027-01-30', '2027-06-30');
@@ -69,16 +78,66 @@ create table public.applications (
   paid numeric(14, 2) not null default 0 check (paid >= 0),
   fee_paid boolean not null default true,
   status public.application_status not null default 'reserved',
+  -- Date the deposit (or full price) was confirmed; fixes queue position.
+  confirmed_on date,
+  terms_version text not null,
+  terms_accepted_at timestamptz not null,
+  accepted_clauses text[] not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint applications_paid_within_amount check (paid <= amount)
+  constraint applications_paid_within_amount check (paid <= amount),
+  constraint applications_clauses_present check (
+    accepted_clauses @> array['refunds', 'default', 'variation', 'title']::text[]
+  )
 );
 
-comment on table public.applications is 'A member plot application, priced server-side from the scheme rate.';
+comment on table public.applications is 'A member plot application, priced server-side from the scheme rate, with the acceptance record attached.';
 
 create index applications_member_idx on public.applications (member_id, created_at desc);
 create index applications_size_idx on public.applications (size_sqm, created_at);
+create index applications_queue_idx on public.applications (confirmed_on, created_at);
 create index applications_open_idx on public.applications (status) where status <> 'allocated';
+
+create table public.payment_evidence (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid not null references public.applications (id) on delete cascade,
+  application_reference text not null,
+  kind public.payment_kind not null,
+  amount numeric(14, 2) not null check (amount > 0),
+  file_name text not null,
+  file_type text not null check (file_type in ('image/png', 'image/jpeg', 'image/webp', 'application/pdf')),
+  file_size integer not null check (file_size > 0 and file_size <= 5242880),
+  storage_path text not null,
+  status public.evidence_status not null default 'pending',
+  uploaded_by uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  uploaded_at timestamptz not null default now(),
+  reviewed_by uuid references public.profiles (id),
+  reviewed_at timestamptz,
+  review_note text,
+  constraint payment_evidence_review_complete check (
+    status = 'pending' or (reviewed_by is not null and reviewed_at is not null)
+  )
+);
+
+comment on table public.payment_evidence is 'Receipts and bank evidence attached to an application, verified by the secretariat.';
+
+create index payment_evidence_application_idx on public.payment_evidence (application_id, uploaded_at desc);
+create index payment_evidence_pending_idx on public.payment_evidence (status) where status = 'pending';
+
+-- Append-only: no update or delete grants are issued for this table.
+create table public.audit_events (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid references public.applications (id) on delete cascade,
+  actor text not null,
+  action text not null,
+  note text not null default '',
+  at timestamptz not null default now()
+);
+
+comment on table public.audit_events is 'Who did what, when: submissions, uploads, verifications and allocation-rule changes.';
+
+create index audit_events_application_idx on public.audit_events (application_id, at desc);
+create index audit_events_action_idx on public.audit_events (action, at desc);
 
 -- ---------------------------------------------------------------------------
 -- updated_at maintenance
@@ -132,6 +191,8 @@ alter table public.profiles enable row level security;
 alter table public.scheme enable row level security;
 alter table public.plot_tiers enable row level security;
 alter table public.applications enable row level security;
+alter table public.payment_evidence enable row level security;
+alter table public.audit_events enable row level security;
 
 -- Profiles: a member reads their own row; the secretariat reads the register.
 create policy profiles_select_own on public.profiles
@@ -147,8 +208,7 @@ create policy profiles_update_own on public.profiles
 revoke update on public.profiles from authenticated;
 grant update (full_name) on public.profiles to authenticated;
 
--- Scheme and plot tiers: readable by every signed-in member; only the
--- secretariat writes, and inventory counts are maintained by the function below.
+-- Scheme: readable by every signed-in member; only the secretariat changes it.
 create policy scheme_select_authenticated on public.scheme
   for select to authenticated
   using (true);
@@ -180,17 +240,113 @@ create policy applications_update_admin on public.applications
 -- Inserts do not go through the table: they go through the function below,
 -- which locks the tier row and prices the plot server-side.
 revoke insert, update, delete on public.applications from authenticated;
-grant update (paid, fee_paid, status) on public.applications to authenticated;
+grant update (paid, fee_paid, status, confirmed_on) on public.applications to authenticated;
+
+-- Evidence: members attach to their own application and read their own files;
+-- the secretariat reads every attachment.
+create policy payment_evidence_select_own on public.payment_evidence
+  for select to authenticated
+  using (
+    uploaded_by = (select auth.uid())
+    or exists (
+      select 1 from public.applications a
+      where a.id = payment_evidence.application_id and a.member_id = (select auth.uid())
+    )
+    or (select public.is_admin())
+  );
+
+create policy payment_evidence_insert_own on public.payment_evidence
+  for insert to authenticated
+  with check (
+    uploaded_by = (select auth.uid())
+    and status = 'pending'
+    and exists (
+      select 1 from public.applications a
+      where a.id = payment_evidence.application_id and a.member_id = (select auth.uid())
+    )
+  );
+
+-- Reviews go through review_payment_evidence(), so no update grant is needed.
+revoke update, delete on public.payment_evidence from authenticated;
+
+create policy audit_select_own on public.audit_events
+  for select to authenticated
+  using (
+    (select public.is_admin())
+    or exists (
+      select 1 from public.applications a
+      where a.id = audit_events.application_id and a.member_id = (select auth.uid())
+    )
+    or application_id is null
+  );
+
+-- Members may append an entry to their own application; scheme-wide entries are
+-- admin-only. Definitive entries are written by the security-definer functions.
+create policy audit_insert_own_or_admin on public.audit_events
+  for insert to authenticated
+  with check (
+    (select public.is_admin())
+    or (
+      application_id is not null
+      and exists (
+        select 1 from public.applications a
+        where a.id = audit_events.application_id and a.member_id = (select auth.uid())
+      )
+    )
+  );
+
+revoke update, delete on public.audit_events from authenticated;
 
 -- ---------------------------------------------------------------------------
--- Applying (atomic: capacity check, insert, allocation counter)
+-- Storage: receipts live in a private bucket, one folder per application
+-- ---------------------------------------------------------------------------
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'payment-evidence',
+  'payment-evidence',
+  false,
+  5242880,
+  array['image/png', 'image/jpeg', 'image/webp', 'application/pdf']
+)
+on conflict (id) do nothing;
+
+create policy payment_evidence_upload on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'payment-evidence'
+    and exists (
+      select 1 from public.applications a
+      where a.id::text = (storage.foldername(name))[1]
+        and (a.member_id = (select auth.uid()) or (select public.is_admin()))
+    )
+  );
+
+create policy payment_evidence_read on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'payment-evidence'
+    and (
+      (select public.is_admin())
+      or exists (
+        select 1 from public.applications a
+        where a.id::text = (storage.foldername(name))[1]
+          and a.member_id = (select auth.uid())
+      )
+    )
+  );
+
+-- ---------------------------------------------------------------------------
+-- Applying (atomic: capacity check, acceptance record, audit entry)
 -- ---------------------------------------------------------------------------
 
 create or replace function public.create_plot_application(
   p_size_sqm integer,
   p_house_design public.house_design,
   p_member_number text,
-  p_cadre public.cadre
+  p_cadre public.cadre,
+  p_accepted_clauses text[],
+  p_terms_version text
 )
 returns public.applications
 language plpgsql
@@ -202,6 +358,7 @@ declare
   v_scheme public.scheme;
   v_tier public.plot_tiers;
   v_application public.applications;
+  v_actor text;
 begin
   if v_member is null then
     raise exception 'AUTH_REQUIRED' using errcode = '28000';
@@ -209,6 +366,15 @@ begin
 
   if p_size_sqm is null then
     raise exception 'INVALID_SIZE' using errcode = '22023';
+  end if;
+
+  if p_accepted_clauses is null
+     or not (p_accepted_clauses @> array['refunds', 'default', 'variation', 'title']::text[]) then
+    raise exception 'TERMS_NOT_ACCEPTED' using errcode = '22023';
+  end if;
+
+  if coalesce(btrim(p_terms_version), '') = '' then
+    raise exception 'TERMS_VERSION_REQUIRED' using errcode = '22023';
   end if;
 
   -- The member number on the application must be the member's own, not one
@@ -221,6 +387,8 @@ begin
   ) then
     raise exception 'MEMBER_NUMBER_MISMATCH' using errcode = '22023';
   end if;
+
+  select coalesce(full_name, 'member') into v_actor from public.profiles where id = v_member;
 
   select * into v_scheme from public.scheme where id;
   if not found then
@@ -251,7 +419,10 @@ begin
     amount,
     paid,
     fee_paid,
-    status
+    status,
+    terms_version,
+    terms_accepted_at,
+    accepted_clauses
   )
   values (
     'GD-' || p_size_sqm || '-' || lpad((v_tier.allocated + 1)::text, 4, '0'),
@@ -263,7 +434,10 @@ begin
     p_size_sqm * v_scheme.price_per_sqm,
     0,
     true,
-    'reserved'
+    'reserved',
+    btrim(p_terms_version),
+    now(),
+    p_accepted_clauses
   )
   returning * into v_application;
 
@@ -271,12 +445,128 @@ begin
   set allocated = allocated + 1
   where id = v_tier.id;
 
+  insert into public.audit_events (application_id, actor, action, note)
+  values
+    (
+      v_application.id,
+      v_actor,
+      'Application submitted',
+      v_application.reference || ' for ' || p_size_sqm || ' sqm.'
+    ),
+    (
+      v_application.id,
+      v_actor,
+      'Terms accepted',
+      btrim(p_terms_version) || ' — ' || array_length(p_accepted_clauses, 1) || ' conditions acknowledged.'
+    );
+
   return v_application;
 end;
 $$;
 
-revoke all on function public.create_plot_application(integer, public.house_design, text, public.cadre) from public;
-grant execute on function public.create_plot_application(integer, public.house_design, text, public.cadre) to authenticated;
+revoke all on function public.create_plot_application(integer, public.house_design, text, public.cadre, text[], text) from public;
+grant execute on function public.create_plot_application(integer, public.house_design, text, public.cadre, text[], text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Verifying payment evidence (atomic: status, payment, audit trail)
+-- ---------------------------------------------------------------------------
+
+create or replace function public.review_payment_evidence(
+  p_evidence_id uuid,
+  p_decision public.evidence_status,
+  p_note text
+)
+returns public.payment_evidence
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_evidence public.payment_evidence;
+  v_application public.applications;
+  v_actor text;
+  v_paid numeric(14, 2);
+  v_status public.application_status;
+  v_confirmed date;
+  v_note text := nullif(btrim(coalesce(p_note, '')), '');
+begin
+  if not (select public.is_admin()) then
+    raise exception 'ADMIN_REQUIRED' using errcode = '42501';
+  end if;
+
+  if p_decision not in ('verified', 'rejected') then
+    raise exception 'INVALID_DECISION' using errcode = '22023';
+  end if;
+
+  if p_decision = 'rejected' and coalesce(char_length(v_note), 0) < 8 then
+    raise exception 'NOTE_REQUIRED' using errcode = '22023';
+  end if;
+
+  select coalesce(full_name, 'secretariat') into v_actor from public.profiles where id = (select auth.uid());
+
+  select * into v_evidence from public.payment_evidence where id = p_evidence_id for update;
+  if not found then
+    raise exception 'EVIDENCE_NOT_FOUND' using errcode = 'P0002';
+  end if;
+
+  if v_evidence.status <> 'pending' then
+    raise exception 'EVIDENCE_ALREADY_REVIEWED' using errcode = '22023';
+  end if;
+
+  update public.payment_evidence
+  set status = p_decision,
+      reviewed_by = (select auth.uid()),
+      reviewed_at = now(),
+      review_note = v_note
+  where id = p_evidence_id
+  returning * into v_evidence;
+
+  if p_decision = 'verified' then
+    select * into v_application from public.applications where id = v_evidence.application_id for update;
+    if not found then
+      raise exception 'APPLICATION_NOT_FOUND' using errcode = 'P0002';
+    end if;
+
+    v_paid := least(v_application.amount, v_application.paid + v_evidence.amount);
+    v_status := case
+      when v_paid >= v_application.amount then 'fully-paid'::public.application_status
+      when v_paid > 0 then 'deposit-paid'::public.application_status
+      else 'reserved'::public.application_status
+    end;
+    v_confirmed := coalesce(
+      v_application.confirmed_on,
+      case when v_paid >= v_application.amount / 2 then current_date else null end
+    );
+
+    update public.applications
+    set paid = v_paid,
+        status = v_status,
+        confirmed_on = v_confirmed
+    where id = v_application.id;
+
+    insert into public.audit_events (application_id, actor, action, note)
+    values (
+      v_application.id,
+      v_actor,
+      'Payment recorded',
+      v_evidence.amount::text || ' recorded on ' || v_application.reference || ' from ' || v_evidence.file_name || '.'
+    );
+  end if;
+
+  insert into public.audit_events (application_id, actor, action, note)
+  values (
+    v_evidence.application_id,
+    v_actor,
+    case when p_decision = 'verified' then 'Payment evidence verified' else 'Payment evidence rejected' end,
+    coalesce(v_note, v_evidence.file_name)
+  );
+
+  return v_evidence;
+end;
+$$;
+
+revoke all on function public.review_payment_evidence(uuid, public.evidence_status, text) from public;
+grant execute on function public.review_payment_evidence(uuid, public.evidence_status, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Read grants (RLS still filters every row)
@@ -286,6 +576,9 @@ grant select on public.scheme to authenticated;
 grant select on public.plot_tiers to authenticated;
 grant select on public.profiles to authenticated;
 grant select on public.applications to authenticated;
+grant select on public.payment_evidence to authenticated;
+grant insert on public.payment_evidence to authenticated;
+grant select, insert on public.audit_events to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Allocation summary for the reports screen
@@ -298,7 +591,8 @@ select
   count(*)::bigint as application_count,
   coalesce(sum(amount), 0)::numeric(16, 2) as committed,
   coalesce(sum(paid), 0)::numeric(16, 2) as collected,
-  coalesce(sum(amount - paid), 0)::numeric(16, 2) as outstanding
+  coalesce(sum(amount - paid), 0)::numeric(16, 2) as outstanding,
+  count(*) filter (where confirmed_on is not null)::bigint as confirmed_applications
 from public.applications;
 
 grant select on public.allocation_summary to authenticated;

@@ -12,6 +12,7 @@ import { NotFound } from './pages/NotFound';
 import { Overview } from './pages/Overview';
 import { Plots } from './pages/Plots';
 import { Reports } from './pages/Reports';
+import { Settings } from './pages/Settings';
 import { SignIn } from './pages/SignIn';
 
 function ScrollToTop() {
@@ -68,6 +69,7 @@ export default function App() {
                   <Route path="application" element={<Application />} />
                   <Route path="members" element={<Members />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="settings" element={<Settings />} />
                 </Route>
               </Route>
               <Route path="*" element={<NotFound />} />

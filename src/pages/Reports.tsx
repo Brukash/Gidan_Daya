@@ -3,10 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useSession } from '../auth/session';
 import { Button, EmptyState, ErrorBlock, Kpi, LoadingBlock, PageHeader, Passbook, useToast } from '../components/ui';
-import { listApplications, listMembers, listTiers } from '../data/repository';
+import { getSettings, listApplications, listMembers, listTiers } from '../data/repository';
 import { SCHEME } from '../data/seed';
 import {
+  STATUS_LABEL,
+  allocationOrder,
   allocationPercent,
+  describePolicy,
   hasPriority,
   remainingPlots,
   schemeTotals,
@@ -23,12 +26,16 @@ export function Reports() {
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers });
   const appsQuery = useQuery({ queryKey: ['applications', 'all'], queryFn: () => listApplications() });
   const membersQuery = useQuery({ queryKey: ['members'], queryFn: listMembers });
+  const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
   const tiers = tiersQuery.data ?? [];
   const apps = appsQuery.data ?? [];
   const members = membersQuery.data ?? [];
 
   const totals = schemeTotals(tiers, SCHEME);
+  const policy = describePolicy(settingsQuery.data?.allocationPolicy ?? 'cadre-priority-same-day');
+  const queue = allocationOrder(apps, policy.id);
+  const confirmedQueue = queue.filter((item) => item.confirmedOn !== null);
   const committed = sumBy(apps, (item) => item.amount);
   const collected = sumBy(apps, (item) => item.paid);
   const outstanding = Math.max(0, committed - collected);
@@ -162,6 +169,64 @@ export function Reports() {
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.amount))}</td>
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.paid))}</td>
                         <td className="num">{remainingPlots(tier)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section aria-labelledby="queue-heading" className="card-raised overflow-hidden">
+            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-4 py-3">
+              <div>
+                <h2 id="queue-heading" className="text-[1.05rem]">
+                  Allocation queue
+                </h2>
+                <p className="text-xs text-ink-soft">
+                  {policy.label} — {policy.summary}
+                </p>
+              </div>
+              <Link to="/app/settings" className="text-sm font-medium text-forest underline-offset-4 hover:underline">
+                Change the rule
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="ledger">
+                <caption className="sr-only">Allocation order under the current rule</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Applicant</th>
+                    <th scope="col">Cadre</th>
+                    <th scope="col">Plot</th>
+                    <th scope="col">Deposit confirmed</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {queue.map((item) => {
+                    const position = item.confirmedOn ? confirmedQueue.indexOf(item) + 1 : null;
+                    return (
+                      <tr key={item.id}>
+                        <td className="num text-ink-soft">{position ?? '—'}</td>
+                        <td>
+                          <span className="block font-medium">{item.memberName}</span>
+                          <span className="num block text-xs text-ink-soft">{item.memberNumber}</span>
+                        </td>
+                        <td>
+                          <span className="block">{item.cadre}</span>
+                          {hasPriority(item.cadre) ? (
+                            <span className="text-xs text-ink-soft">Priority cadre</span>
+                          ) : null}
+                        </td>
+                        <td className="num whitespace-nowrap">{formatSqm(item.sizeSqm)}</td>
+                        <td className="num whitespace-nowrap text-ink-soft">
+                          {item.confirmedOn ? formatDate(item.confirmedOn) : 'Awaiting confirmation'}
+                        </td>
+                        <td>
+                          <span className="text-xs">{STATUS_LABEL[item.status]}</span>
+                        </td>
                       </tr>
                     );
                   })}

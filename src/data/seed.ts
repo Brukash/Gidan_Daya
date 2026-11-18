@@ -1,4 +1,5 @@
-import type { Application, Member, PlotTier, Scheme } from './types';
+import type { AllocationPolicy, Application, Member, PaymentEvidence, PlotTier, Scheme, SchemeSettings } from './types';
+import { TERMS_CLAUSES, TERMS_VERSION } from './terms';
 
 /**
  * Figures taken from the cooperative's "Call for Indication of Interest —
@@ -23,6 +24,18 @@ export const SITE_VISIT = {
     'The National Ecumenical Centre, opposite CBN Head Office back entrance, CBD, FCT Abuja',
   dates: ['2026-11-28', '2026-12-05'],
 } as const;
+
+/**
+ * Default reading of the allocation rule: payment date decides, and within the
+ * same date the lower cadres rank first. The secretariat can change it.
+ */
+export const DEFAULT_SETTINGS: SchemeSettings = { allocationPolicy: 'cadre-priority-same-day' };
+
+/** Recorded on every application created in sample mode. */
+const ACCEPTED = {
+  termsVersion: TERMS_VERSION,
+  acceptedClauses: TERMS_CLAUSES.map((clause) => clause.id),
+};
 
 /**
  * Plot inventory from the call: 4 x 200sqm, 44 x 300sqm, 44 x 400sqm, 10 x
@@ -143,6 +156,9 @@ export const SAMPLE_APPLICATIONS: Application[] = [
     feePaid: true,
     status: 'deposit-paid',
     createdAt: '2026-11-09',
+    confirmedOn: '2026-11-13',
+    acceptedAt: '2026-11-09T11:20:00.000Z',
+    ...ACCEPTED,
   },
   {
     id: 'a-2002',
@@ -158,6 +174,9 @@ export const SAMPLE_APPLICATIONS: Application[] = [
     feePaid: true,
     status: 'fully-paid',
     createdAt: '2026-11-06',
+    confirmedOn: '2026-11-08',
+    acceptedAt: '2026-11-06T09:05:00.000Z',
+    ...ACCEPTED,
   },
   {
     id: 'a-2003',
@@ -173,6 +192,9 @@ export const SAMPLE_APPLICATIONS: Application[] = [
     feePaid: true,
     status: 'reserved',
     createdAt: '2026-11-12',
+    confirmedOn: null,
+    acceptedAt: '2026-11-12T15:40:00.000Z',
+    ...ACCEPTED,
   },
   {
     id: 'a-2004',
@@ -188,6 +210,9 @@ export const SAMPLE_APPLICATIONS: Application[] = [
     feePaid: true,
     status: 'deposit-paid',
     createdAt: '2026-11-04',
+    confirmedOn: '2026-11-10',
+    acceptedAt: '2026-11-04T08:55:00.000Z',
+    ...ACCEPTED,
   },
   {
     id: 'a-2005',
@@ -203,5 +228,99 @@ export const SAMPLE_APPLICATIONS: Application[] = [
     feePaid: true,
     status: 'allocated',
     createdAt: '2026-11-03',
+    confirmedOn: '2026-11-05',
+    acceptedAt: '2026-11-03T10:30:00.000Z',
+    ...ACCEPTED,
   },
 ];
+
+/** Sample payment evidence, so the verification step has something to review. */
+export const SAMPLE_EVIDENCE: PaymentEvidence[] = [
+  {
+    id: 'ev-1001',
+    applicationId: 'a-2001',
+    applicationReference: 'GD-300-0012',
+    kind: 'deposit',
+    amount: 4_050_000,
+    fileName: 'uba-credit-alert-13nov.pdf',
+    fileType: 'application/pdf',
+    fileSize: 184_320,
+    preview: null,
+    status: 'verified',
+    uploadedAt: '2026-11-12T09:14:00.000Z',
+    reviewedBy: 'Tunde Ajayi',
+    reviewedAt: '2026-11-13T10:05:00.000Z',
+    reviewNote: 'UBA credit alert matches the deposit; narration carries CBN/2019/0417.',
+  },
+  {
+    id: 'ev-1002',
+    applicationId: 'a-2002',
+    applicationReference: 'GD-400-0007',
+    kind: 'balance',
+    amount: 5_400_000,
+    fileName: 'final-transfer-receipt.jpg',
+    fileType: 'image/jpeg',
+    fileSize: 742_100,
+    preview: null,
+    status: 'verified',
+    uploadedAt: '2026-11-07T16:22:00.000Z',
+    reviewedBy: 'Aisha Bello',
+    reviewedAt: '2026-11-08T09:12:00.000Z',
+    reviewNote: 'Balance cleared in two transfers; both narrations quote the ID number.',
+  },
+  {
+    id: 'ev-1003',
+    applicationId: 'a-2004',
+    applicationReference: 'GD-500-0003',
+    kind: 'balance',
+    amount: 6_750_000,
+    fileName: 'gtb-transfer-16nov.jpg',
+    fileType: 'image/jpeg',
+    fileSize: 512_900,
+    preview: null,
+    status: 'pending',
+    uploadedAt: '2026-11-16T11:48:00.000Z',
+    reviewedBy: null,
+    reviewedAt: null,
+    reviewNote: null,
+  },
+];
+
+/** Sample audit trail: what the register would show for the first applications. */
+export const SAMPLE_AUDIT = [
+  {
+    id: 'au-1001',
+    applicationId: 'a-2001',
+    actor: 'Aisha Bello',
+    action: 'Payment evidence verified',
+    note: 'Deposit of ₦4,050,000 confirmed against the UBA project account.',
+    at: '2026-11-13T10:05:00.000Z',
+  },
+  {
+    id: 'au-1002',
+    applicationId: 'a-2001',
+    actor: 'Aisha Bello',
+    action: 'Terms accepted',
+    note: `${TERMS_VERSION} — refunds, default, plot-size variation and title costs acknowledged.`,
+    at: '2026-11-09T11:20:00.000Z',
+  },
+  {
+    id: 'au-1003',
+    applicationId: 'a-2004',
+    actor: 'Tunde Ajayi',
+    action: 'Terms accepted',
+    note: `${TERMS_VERSION} — refunds, default, plot-size variation and title costs acknowledged.`,
+    at: '2026-11-04T08:55:00.000Z',
+  },
+  {
+    id: 'au-1004',
+    applicationId: null,
+    actor: 'Tunde Ajayi',
+    action: 'Allocation rule set',
+    note: 'Payment date decides; lower cadre ranks first on the same date.',
+    at: '2026-11-06T08:40:00.000Z',
+  },
+];
+
+/** Kept for typing convenience in the repository. */
+export const SAMPLE_POLICY: AllocationPolicy = DEFAULT_SETTINGS.allocationPolicy;

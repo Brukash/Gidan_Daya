@@ -5,7 +5,7 @@ import { SCHEME } from '../data/seed';
 import { dataMode } from '../lib/supabase';
 import { DataModeBadge } from './ui';
 
-type IconName = 'grid' | 'plots' | 'plus' | 'receipt' | 'users' | 'chart';
+type IconName = 'grid' | 'plots' | 'plus' | 'receipt' | 'users' | 'chart' | 'settings';
 
 interface NavItem {
   to: string;
@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { to: '/app/application', label: 'My application', end: false, icon: 'receipt' },
   { to: '/app/members', label: 'Applicants', end: false, icon: 'users', adminOnly: true },
   { to: '/app/reports', label: 'Reports', end: false, icon: 'chart', adminOnly: true },
+  { to: '/app/settings', label: 'Scheme settings', end: false, icon: 'settings', adminOnly: true },
 ];
 
 function Icon({ name }: { name: IconName }) {
@@ -32,6 +33,7 @@ function Icon({ name }: { name: IconName }) {
     receipt: 'M6 3.5h12v17l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',
     users: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 19c.6-3 2.8-4.5 5.5-4.5S13 16 13.5 19M17 11.5a2.5 2.5 0 1 0 0-5M15.5 14.8c2.4.3 4 1.8 4.5 4.2',
     chart: 'M4 19V5M4 19h16M8 15v-4M12.5 15V8M17 15v-6',
+    settings: 'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.66 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.06a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
   };
 
   return (

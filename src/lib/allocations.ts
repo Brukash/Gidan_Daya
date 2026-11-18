@@ -1,5 +1,5 @@
-import type { ApplicationStatus, Cadre, PlotTier, Scheme } from '../data/types';
-import { daysUntil } from './format';
+import type { AllocationPolicy, ApplicationStatus, Cadre, PlotTier, Scheme } from '../data/types';
+import { daysUntil, formatDate } from './format';
 
 export const PASSBOOK_TICKS = 24;
 
@@ -94,4 +94,133 @@ export function schemeTotals(tiers: PlotTier[], scheme: Pick<Scheme, 'pricePerSq
 
 export function sumBy<T>(items: readonly T[], pick: (item: T) => number): number {
   return items.reduce((total, item) => total + pick(item), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Allocation rule
+// ---------------------------------------------------------------------------
+
+export interface PolicyOption {
+  id: AllocationPolicy;
+  label: string;
+  summary: string;
+  detail: string;
+}
+
+/**
+ * The three defensible readings of the call. The document says allocation is
+ * first-come by payment confirmation *and* that lower cadres get priority;
+ * these options make the compromise explicit instead of hiding it in code.
+ */
+const POLICY_BY_ID: Record<AllocationPolicy, PolicyOption> = {
+  'first-come': {
+    id: 'first-come',
+    label: 'First-come, strictly',
+    summary: 'Payment confirmation decides; cadre is ignored.',
+    detail:
+      'The earliest confirmed deposit takes the next plot, whatever the applicant\'s cadre. This is the plain reading of "first-come, first-served, determined by the date of payment confirmation".',
+  },
+  'cadre-priority-same-day': {
+    id: 'cadre-priority-same-day',
+    label: 'Payment date, then cadre',
+    summary: 'Lower cadre ranks ahead only among payments confirmed on the same date.',
+    detail:
+      'Applications are ordered by the date the deposit is confirmed. Within one date, Clerk, Executive Officer and Assistant Manager rank ahead of Manager and Senior Manager. This honours both sentences in the call without letting an early junior payment overtake everyone.',
+  },
+  'cadre-priority': {
+    id: 'cadre-priority',
+    label: 'Cadre first',
+    summary: 'Every lower-cadre applicant ranks ahead, however late they paid.',
+    detail:
+      'All Clerk to Assistant Manager applicants are placed before Manager and Senior Manager applicants, and payment date only breaks ties inside each group. This maximises the preference the call describes, at the cost of strict first-come order.',
+  },
+};
+
+/** Ordered for menus: strict first-come, the default, then cadre first. */
+export const POLICY_OPTIONS: PolicyOption[] = [
+  POLICY_BY_ID['first-come'],
+  POLICY_BY_ID['cadre-priority-same-day'],
+  POLICY_BY_ID['cadre-priority'],
+];
+
+export function describePolicy(policy: AllocationPolicy): PolicyOption {
+  return POLICY_BY_ID[policy];
+}
+
+/** A plot is held only once half the price has been confirmed. */
+export function isConfirmed(application: { amount: number; paid: number }): boolean {
+  return application.paid >= depositFor(application.amount);
+}
+
+type QueueItem = {
+  id: string;
+  cadre: Cadre;
+  amount: number;
+  paid: number;
+  createdAt: string;
+  confirmedOn: string | null;
+};
+
+/**
+ * Applications in allocation order. Confirmed applications come first, then
+ * those still waiting for a confirmed deposit, oldest application first.
+ */
+export function allocationOrder<T extends QueueItem>(applications: readonly T[], policy: AllocationPolicy): T[] {
+  const confirmed = applications.filter((item) => item.confirmedOn !== null);
+  const waiting = applications.filter((item) => item.confirmedOn === null);
+
+  const sorted = [...confirmed].sort((a, b) => {
+    if (policy === 'cadre-priority') {
+      const rank = Number(hasPriority(b.cadre)) - Number(hasPriority(a.cadre));
+      if (rank !== 0) return rank;
+    }
+
+    const byDate = (a.confirmedOn ?? '').localeCompare(b.confirmedOn ?? '');
+    if (byDate !== 0) return byDate;
+
+    if (policy === 'cadre-priority-same-day') {
+      const rank = Number(hasPriority(b.cadre)) - Number(hasPriority(a.cadre));
+      if (rank !== 0) return rank;
+    }
+
+    return a.createdAt.localeCompare(b.createdAt);
+  });
+
+  const queue = [...waiting].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  return [...sorted, ...queue];
+}
+
+/** 1-based position in the allocation queue, or null before the deposit is confirmed. */
+export function queuePosition<T extends QueueItem>(
+  applications: readonly T[],
+  application: T,
+  policy: AllocationPolicy,
+): number | null {
+  if (application.confirmedOn === null) return null;
+  const index = allocationOrder(applications, policy).findIndex((item) => item.id === application.id);
+  return index >= 0 ? index + 1 : null;
+}
+
+/** Why an application sits where it does, in one line. */
+export function positionReason(application: { confirmedOn: string | null; cadre: Cadre }, policy: AllocationPolicy): string {
+  if (application.confirmedOn === null) {
+    return 'Your position is fixed when the secretariat confirms the deposit.';
+  }
+
+  const when = formatDate(application.confirmedOn);
+
+  if (policy === 'first-come') {
+    return `Confirmed ${when}. Cadre is not considered under the current rule.`;
+  }
+
+  if (policy === 'cadre-priority') {
+    return hasPriority(application.cadre)
+      ? `${application.cadre} is a priority cadre, so you rank ahead of Manager and above regardless of payment date.`
+      : `${application.cadre} is not a priority cadre, so Clerk to Assistant Manager rank ahead of you whatever the payment date.`;
+  }
+
+  return hasPriority(application.cadre)
+    ? `Confirmed ${when}. ${application.cadre} ranks ahead of Manager and above on the same date.`
+    : `Confirmed ${when}. Clerk to Assistant Manager confirmed on the same date rank ahead of you.`;
 }

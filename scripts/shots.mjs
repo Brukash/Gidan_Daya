@@ -15,15 +15,35 @@ const SESSION = {
   cadre: 'Assistant Manager',
 };
 
+const REVIEWER = {
+  id: 'm-004',
+  name: 'Tunde Ajayi',
+  email: 'tunde.ajayi@coop.example',
+  role: 'admin',
+  memberNumber: 'CBN/2018/0088',
+  cadre: 'Senior Manager',
+};
+
 const ROUTES = [
   { name: 'landing', path: '/', auth: false },
   { name: 'signin', path: '/signin', auth: false },
   { name: 'overview', path: '/app', auth: true },
   { name: 'plots', path: '/app/plots', auth: true },
   { name: 'apply', path: '/app/apply?size=400', auth: true },
+  {
+    name: 'apply-terms',
+    path: '/app/apply?size=400',
+    auth: true,
+    action: async (page) => {
+      await page.getByRole('button', { name: /continue to the conditions/i }).click();
+      await page.waitForTimeout(400);
+    },
+  },
   { name: 'application', path: '/app/application', auth: true },
+  { name: 'application-review', path: '/app/application', auth: true, session: REVIEWER },
   { name: 'members', path: '/app/members', auth: true },
   { name: 'reports', path: '/app/reports', auth: true },
+  { name: 'settings', path: '/app/settings', auth: true },
 ];
 
 const WIDTHS = [
@@ -37,15 +57,22 @@ const browser = await chromium.launch();
 const errors = [];
 
 for (const size of WIDTHS) {
-  const authed = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
-  await authed.addInitScript((session) => {
-    window.sessionStorage.setItem('gidan-daya:user', JSON.stringify(session));
-  }, SESSION);
-
+  const authedBySession = new Map();
   const publicContext = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
 
+  const contextFor = async (session) => {
+    if (!authedBySession.has(session.id)) {
+      const context = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
+      await context.addInitScript((value) => {
+        window.sessionStorage.setItem('gidan-daya:user', JSON.stringify(value));
+      }, session);
+      authedBySession.set(session.id, context);
+    }
+    return authedBySession.get(session.id);
+  };
+
   for (const route of ROUTES) {
-    const context = route.auth ? authed : publicContext;
+    const context = route.auth ? await contextFor(route.session ?? SESSION) : publicContext;
     const page = await context.newPage();
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(`${size.width} ${route.name}: ${message.text()}`);
@@ -53,6 +80,7 @@ for (const size of WIDTHS) {
     page.on('pageerror', (error) => errors.push(`${size.width} ${route.name} pageerror: ${error.message}`));
 
     await page.goto(`${BASE}${route.path}`, { waitUntil: 'networkidle' });
+    if (route.action) await route.action(page);
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(350);
     await page.screenshot({ path: `${OUT}/${route.name}-${size.width}.png`, fullPage: true });
@@ -60,7 +88,7 @@ for (const size of WIDTHS) {
     await page.close();
   }
 
-  await authed.close();
+  for (const context of authedBySession.values()) await context.close();
   await publicContext.close();
 }
 

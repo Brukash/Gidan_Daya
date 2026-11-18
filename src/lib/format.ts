@@ -34,6 +34,26 @@ export function formatDate(iso: string): string {
   return dateFormatter.format(new Date(iso));
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat('en-NG', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** 13 Nov 2026, 10:05 — for audit entries, where the time matters. */
+export function formatDateTime(iso: string): string {
+  return dateTimeFormatter.format(new Date(iso));
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
 export function formatShortDate(iso: string): string {
   return shortDateFormatter.format(new Date(iso));
 }
