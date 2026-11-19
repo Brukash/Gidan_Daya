@@ -1,34 +1,31 @@
 // Design inspection captures. Run with the dev server already listening.
 //   node scripts/shots.mjs
+//
+// Signed-in screens are reached by signing in through the real form, so the
+// same script works in sample mode and against a Supabase backend.
+//   SHOTS_EMAIL / SHOTS_PASSWORD  sign-in for the /app routes (default: the
+//                                 seeded demo secretariat account)
+//   SHOTS_REVIEWER_EMAIL /        optional second account for application-review
+//   SHOTS_REVIEWER_PASSWORD
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 
-const BASE = 'http://localhost:5173';
+const BASE = process.env.SHOTS_BASE ?? 'http://localhost:5173';
 const OUT = 'design/shots';
 
-const SESSION = {
-  id: 'm-001',
-  name: 'Aisha Bello (secretariat)',
-  email: 'admin@coop.example',
-  role: 'admin',
-  memberNumber: 'CBN/2019/0417',
-  cadre: 'Assistant Manager',
+const ADMIN = {
+  email: process.env.SHOTS_EMAIL ?? 'admin@coop.example',
+  password: process.env.SHOTS_PASSWORD ?? 'gidandaya',
 };
 
-const REVIEWER = {
-  id: 'm-004',
-  name: 'Tunde Ajayi',
-  email: 'tunde.ajayi@coop.example',
-  role: 'admin',
-  memberNumber: 'CBN/2018/0088',
-  cadre: 'Senior Manager',
-};
+const REVIEWER =
+  process.env.SHOTS_REVIEWER_EMAIL && process.env.SHOTS_REVIEWER_PASSWORD
+    ? { email: process.env.SHOTS_REVIEWER_EMAIL, password: process.env.SHOTS_REVIEWER_PASSWORD }
+    : null;
 
 const ROUTES = [
   { name: 'landing', path: '/', auth: false },
   { name: 'signin', path: '/signin', auth: false },
-  { name: 'overview', path: '/app', auth: true },
-  { name: 'plots', path: '/app/plots', auth: true },
   { name: 'apply', path: '/apply?size=400', auth: false },
   {
     name: 'apply-terms',
@@ -42,8 +39,10 @@ const ROUTES = [
     },
   },
   { name: 'application-received', path: '/apply/received/GD-300-0012', auth: false },
+  { name: 'overview', path: '/app', auth: true },
+  { name: 'plots', path: '/app/plots', auth: true },
   { name: 'application', path: '/app/application', auth: true },
-  { name: 'application-review', path: '/app/application', auth: true, session: REVIEWER },
+  { name: 'application-review', path: '/app/application', auth: true, reviewer: true },
   { name: 'members', path: '/app/members', auth: true },
   { name: 'reports', path: '/app/reports', auth: true },
   { name: 'settings', path: '/app/settings', auth: true },
@@ -59,40 +58,91 @@ await mkdir(OUT, { recursive: true });
 const browser = await chromium.launch();
 const errors = [];
 
-for (const size of WIDTHS) {
-  const authedBySession = new Map();
-  const publicContext = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
+/**
+ * Signs in through the sign-in form. Sample mode keeps the session in
+ * sessionStorage, which belongs to one tab, so every capture for an account
+ * must happen on the page that signed in.
+ */
+async function signIn(page, credentials) {
+  await page.goto(`${BASE}/signin`, { waitUntil: 'networkidle' });
+  await page.locator('#email').fill(credentials.email);
+  await page.locator('#password').fill(credentials.password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-  const contextFor = async (session) => {
-    if (!authedBySession.has(session.id)) {
-      const context = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
-      await context.addInitScript((value) => {
-        window.sessionStorage.setItem('gidan-daya:user', JSON.stringify(value));
-      }, session);
-      authedBySession.set(session.id, context);
-    }
-    return authedBySession.get(session.id);
-  };
-
-  for (const route of ROUTES) {
-    const context = route.auth ? await contextFor(route.session ?? SESSION) : publicContext;
-    const page = await context.newPage();
-    page.on('console', (message) => {
-      if (message.type() === 'error') errors.push(`${size.width} ${route.name}: ${message.text()}`);
-    });
-    page.on('pageerror', (error) => errors.push(`${size.width} ${route.name} pageerror: ${error.message}`));
-
-    await page.goto(`${BASE}${route.path}`, { waitUntil: 'networkidle' });
-    if (route.action) await route.action(page);
-    await page.evaluate(() => document.fonts.ready);
-    await page.waitForTimeout(350);
-    await page.screenshot({ path: `${OUT}/${route.name}-${size.width}.png`, fullPage: true });
-    console.log(`captured ${route.name}-${size.width}.png · ${page.url()}`);
-    await page.close();
+  try {
+    await page.waitForURL((url) => !url.pathname.startsWith('/signin'), { timeout: 20_000 });
+  } catch {
+    const alert = await page
+      .getByRole('alert')
+      .textContent()
+      .catch(() => null);
+    throw new Error(
+      `Could not sign in as ${credentials.email}${alert ? `: ${alert.trim()}` : '; check the backend and credentials.'}`,
+    );
   }
 
-  for (const context of authedBySession.values()) await context.close();
+  await page.waitForLoadState('networkidle');
+}
+
+function watch(page, label) {
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(`${label}: ${message.text()}`);
+  });
+  page.on('pageerror', (error) => errors.push(`${label} pageerror: ${error.message}`));
+}
+
+async function capture(page, route, label) {
+  await page.goto(`${BASE}${route.path}`, { waitUntil: 'load' });
+  await page.waitForLoadState('networkidle');
+
+  if (route.auth && new URL(page.url()).pathname.startsWith('/signin')) {
+    throw new Error(`${label} ${route.name}: redirected to sign-in, so the capture would be the sign-in page`);
+  }
+
+  if (route.action) await route.action(page);
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(350);
+  await page.screenshot({ path: `${OUT}/${route.name}-${label}.png`, fullPage: true });
+  console.log(`captured ${route.name}-${label}.png · ${page.url()}`);
+}
+
+for (const size of WIDTHS) {
+  const label = String(size.width);
+
+  const publicContext = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
+  const publicPage = await publicContext.newPage();
+  watch(publicPage, `${label} public`);
+
+  for (const route of ROUTES.filter((item) => !item.auth)) {
+    await capture(publicPage, route, label);
+  }
   await publicContext.close();
+
+  const authedContext = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
+  const authedPage = await authedContext.newPage();
+  watch(authedPage, `${label} ${ADMIN.email}`);
+  await signIn(authedPage, ADMIN);
+  console.log(`signed in as ${ADMIN.email} at ${label}`);
+
+  for (const route of ROUTES.filter((item) => item.auth && !item.reviewer)) {
+    await capture(authedPage, route, label);
+  }
+  await authedContext.close();
+
+  if (REVIEWER) {
+    const reviewerContext = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
+    const reviewerPage = await reviewerContext.newPage();
+    watch(reviewerPage, `${label} ${REVIEWER.email}`);
+    await signIn(reviewerPage, REVIEWER);
+    console.log(`signed in as ${REVIEWER.email} at ${label}`);
+
+    for (const route of ROUTES.filter((item) => item.reviewer)) {
+      await capture(reviewerPage, route, label);
+    }
+    await reviewerContext.close();
+  } else {
+    console.log(`skipped application-review at ${label}: set SHOTS_REVIEWER_EMAIL and SHOTS_REVIEWER_PASSWORD to capture it`);
+  }
 }
 
 await browser.close();
@@ -100,6 +150,7 @@ await browser.close();
 if (errors.length > 0) {
   console.log('\nCONSOLE ERRORS:');
   for (const error of errors) console.log(` - ${error}`);
+  process.exitCode = 1;
 } else {
   console.log('\nNo console errors.');
 }
