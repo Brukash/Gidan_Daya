@@ -6,15 +6,8 @@ import { listTiers } from '../data/repository';
 import { SAMPLE_TIERS } from '../data/seed';
 import { useScheme } from '../data/scheme';
 import type { Scheme } from '../data/types';
-import {
-  allocationPercent,
-  depositFor,
-  describeTier,
-  priceForPlot,
-  remainingPlots,
-  schemeTotals,
-} from '../lib/allocations';
-import { formatCompactNaira, formatDate, formatNaira, formatSqm } from '../lib/format';
+import { allocationPercent, describeTier, remainingPlots, schemeTotals } from '../lib/allocations';
+import { formatDate, formatNaira, formatSqm } from '../lib/format';
 import { dataMode } from '../lib/supabase';
 
 function paymentSteps(scheme: Scheme) {
@@ -27,7 +20,7 @@ function paymentSteps(scheme: Scheme) {
     {
       number: '02',
       title: `Pay 50% by ${formatDate(scheme.depositDueOn)}`,
-      body: 'Half of the plot price secures your position. Allocation is first-come, first-served, determined by payment confirmation.',
+      body: 'Half of the value of your plot secures your position, worked out on the size measured after survey. Allocation is first-come, first-served, determined by payment confirmation.',
     },
     {
       number: '03',
@@ -134,7 +127,7 @@ function Hero() {
               Start subscription
             </Link>
             <a href="#plots" className="btn btn-ghost">
-              See plot prices
+              See plot sizes
             </a>
           </div>
 
@@ -171,7 +164,6 @@ function PlotPrices() {
   const rows = (tiersQuery.data ?? SAMPLE_TIERS).map((tier) => ({
     tier,
     status: describeTier(tier, scheme.closesOn),
-    price: priceForPlot(tier.sizeSqm, scheme.pricePerSqm),
   }));
 
   return (
@@ -182,8 +174,9 @@ function PlotPrices() {
             <p className="eyebrow">Plot sizes and allocation</p>
             <h2 className="mt-3 text-[1.85rem] sm:text-[2.3rem]">Four sizes, one rate per square metre.</h2>
             <p className="mt-3 text-[0.9375rem] text-ink-soft">
-              {formatNaira(scheme.pricePerSqm)} per sqm covers the plot and infrastructure. The deposit is half of the
-              plot price, due {formatDate(scheme.depositDueOn)}.
+              {formatNaira(scheme.pricePerSqm)} per sqm covers the plot and infrastructure. Plot sizes are indicative:
+              the price is the size measured after survey multiplied by this rate, and the deposit is half of that
+              value, due {formatDate(scheme.depositDueOn)}.
             </p>
           </div>
           <div className="self-start sm:self-auto">
@@ -193,7 +186,7 @@ function PlotPrices() {
 
         <div className="mt-8 hidden overflow-hidden rounded-sm border border-line bg-paper-2 md:block">
           <table className="ledger">
-            <caption className="sr-only">Plot sizes, prices and availability</caption>
+            <caption className="sr-only">Plot sizes and availability</caption>
             <thead>
               <tr>
                 <th scope="col">Plot size</th>
@@ -202,13 +195,11 @@ function PlotPrices() {
                 <th scope="col" className="w-[22%]">
                   Allocated
                 </th>
-                <th scope="col">Plot price</th>
-                <th scope="col">50% deposit</th>
                 <th scope="col">Status</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ tier, status, price }) => (
+              {rows.map(({ tier, status }) => (
                 <tr key={tier.id}>
                   <td>
                     <Link to={`/apply?size=${tier.sizeSqm}`} className="font-medium hover:underline">
@@ -225,8 +216,6 @@ function PlotPrices() {
                       {allocationPercent(tier.allocated, tier.totalPlots)}% taken
                     </span>
                   </td>
-                  <td className="num whitespace-nowrap">{formatNaira(price)}</td>
-                  <td className="num whitespace-nowrap text-ink-soft">{formatNaira(depositFor(price))}</td>
                   <td>
                     <TierPill status={status} />
                   </td>
@@ -237,7 +226,7 @@ function PlotPrices() {
         </div>
 
         <ul className="mt-6 grid gap-3 md:hidden">
-          {rows.map(({ tier, status, price }) => (
+          {rows.map(({ tier, status }) => (
             <li key={tier.id} className="card-raised p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -249,7 +238,7 @@ function PlotPrices() {
               <div className="mt-3">
                 <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                 <p className="num mt-1.5 text-xs text-ink-soft">
-                  {formatNaira(price)} · deposit {formatCompactNaira(depositFor(price))}
+                  {formatNaira(scheme.pricePerSqm)} per sqm
                 </p>
               </div>
               <Link to={`/apply?size=${tier.sizeSqm}`} className="btn btn-ghost mt-3 w-full text-sm">
@@ -260,8 +249,10 @@ function PlotPrices() {
         </ul>
 
         <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-soft">
-          Plot sizes are subject to the size allocated after survey; additional square metres are payable by the
-          subscriber.{dataMode === 'sample' ? ' Availability shown on this page is sample data.' : ''}
+          Advertised plot sizes are indicative. The plot allocated is measured after survey, and the final price is
+          that measured size multiplied by {formatNaira(scheme.pricePerSqm)} per sqm. A plot advertised as 200 sqm may
+          measure 212 sqm; the extra 12 sqm is payable at the same rate.
+          {dataMode === 'sample' ? ' Availability shown on this page is sample data.' : ''}
         </p>
       </div>
     </section>

@@ -172,8 +172,8 @@ export function SignIn() {
           <ul className="mt-8 space-y-4 border-t border-paper/20 pt-6 text-sm">
             {[
               'Live availability for 200, 300, 400 and 500 sqm plots',
-              'A plot application with reference, price and balance',
-              'The deposit and balance dates, with what is still owed',
+              'A plot application with its reference, plot and status',
+              'The deposit and balance dates, with every payment recorded',
               'A statement you can download as PDF; the register as Excel',
             ].map((item) => (
               <li key={item} className="flex gap-3 text-paper/85">

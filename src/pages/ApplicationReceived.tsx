@@ -5,7 +5,6 @@ import { ApplicationPill, Button, Field } from '../components/ui';
 import { getApplicationByReference } from '../data/repository';
 import { useScheme } from '../data/scheme';
 import type { Application } from '../data/types';
-import { depositFor, outstandingFor } from '../lib/allocations';
 import { formatDate, formatNaira, formatSqm } from '../lib/format';
 import { memberCategoryLabel } from '../lib/validation';
 
@@ -115,8 +114,11 @@ export function ApplicationReceived() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Plot price</dt>
-                  <dd className="num mt-0.5 text-sm font-medium">{formatNaira(application.amount)}</dd>
+                  <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Rate</dt>
+                  <dd className="mt-0.5 text-sm font-medium">
+                    <span className="num">{formatNaira(scheme.pricePerSqm)} per sqm</span> · price follows the
+                    measured size
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Application fee</dt>
@@ -134,21 +136,24 @@ export function ApplicationReceived() {
                       50% deposit
                       <span className="block text-xs text-ink-soft">due {formatDate(scheme.depositDueOn)}</span>
                     </dt>
-                    <dd className="num shrink-0 font-medium">{formatNaira(depositFor(application.amount))}</dd>
+                    <dd className="shrink-0 text-right text-xs text-ink-soft">
+                      half the price of your measured plot
+                    </dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-3 py-2.5">
                     <dt>
                       Balance
                       <span className="block text-xs text-ink-soft">due {formatDate(scheme.balanceDueOn)}</span>
                     </dt>
-                    <dd className="num shrink-0 font-medium">
-                      {formatNaira(application.amount - depositFor(application.amount))}
-                    </dd>
+                    <dd className="shrink-0 text-right text-xs text-ink-soft">the remaining half</dd>
                   </div>
                 </dl>
-                <p className="num mt-2 text-xs text-ink-soft">
-                  Recorded so far: {formatNaira(application.paid)} · outstanding{' '}
-                  {formatNaira(outstandingFor(application))}
+                <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+                  The final price is the plot size measured after survey multiplied by{' '}
+                  {formatNaira(scheme.pricePerSqm)} per sqm.{' '}
+                  {application.paid > 0
+                    ? `Payments recorded so far: ${formatNaira(application.paid)}.`
+                    : 'No payment is recorded against this application yet.'}
                 </p>
               </div>
             </section>

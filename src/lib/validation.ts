@@ -125,6 +125,6 @@ export function reviewNoteProblem(note: string, decision: 'verified' | 'rejected
 export function paymentAmountProblem(amount: number, outstanding: number): string | null {
   if (!Number.isFinite(amount) || amount <= 0) return 'Enter the amount that was paid.';
   if (amount > outstanding)
-    return `That is more than the outstanding balance of ₦${outstanding.toLocaleString('en-NG')}.`;
+    return 'That is more than the outstanding balance on this application.';
   return null;
 }

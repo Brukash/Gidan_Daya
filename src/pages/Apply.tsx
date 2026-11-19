@@ -18,7 +18,7 @@ import { useScheme } from '../data/scheme';
 import { gradeLabel } from '../data/grades';
 import { TERMS_CLAUSES, TERMS_EFFECTIVE_ON, TERMS_VERSION } from '../data/terms';
 import type { Cadre, HouseDesign, MemberCategory } from '../data/types';
-import { depositFor, describePolicy, priceForPlot, remainingPlots } from '../lib/allocations';
+import { describePolicy, remainingPlots } from '../lib/allocations';
 import { formatDate, formatFileSize, formatNaira, formatSqm } from '../lib/format';
 import {
   CADRES,
@@ -97,8 +97,6 @@ export function Apply() {
   });
 
   if (tiersQuery.isLoading) return <LoadingBlock label="Reading plot availability…" />;
-
-  const amount = selected ? priceForPlot(selected.sizeSqm, scheme.pricePerSqm) : 0;
 
   const continueToTerms = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -287,11 +285,8 @@ export function Apply() {
                               className="mt-1.5"
                             />
                           </span>
-                          <span className="num shrink-0 text-right text-sm">
-                            {formatNaira(priceForPlot(tier.sizeSqm, scheme.pricePerSqm))}
-                            <span className="block text-[0.625rem] text-ink-soft">
-                              deposit {formatNaira(depositFor(priceForPlot(tier.sizeSqm, scheme.pricePerSqm)))}
-                            </span>
+                          <span className="num shrink-0 text-right text-[0.625rem] text-ink-soft">
+                            {formatNaira(scheme.pricePerSqm)}/sqm
                           </span>
                         </label>
                       );
@@ -510,12 +505,14 @@ export function Apply() {
                     <>
                       <div className="mt-3 flex items-baseline justify-between gap-3">
                         <span className="text-sm text-ink-soft">{formatSqm(selected.sizeSqm)} plot</span>
-                        <span className="num font-display text-[1.4rem] leading-none text-forest">
-                          {formatNaira(amount)}
+                        <span className="num text-sm font-semibold text-forest">
+                          {formatNaira(scheme.pricePerSqm)}/sqm
                         </span>
                       </div>
-                      <p className="num mt-1 text-xs text-ink-soft">
-                        {formatNaira(scheme.pricePerSqm)}/sqm × {selected.sizeSqm} sqm
+                      <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                        {formatSqm(selected.sizeSqm)} is the advertised size. Your plot is measured after survey, and
+                        the price is that measured size multiplied by the rate, so the final figure is confirmed with
+                        the allocation rather than quoted here.
                       </p>
 
                       <div className="mt-3">
@@ -532,11 +529,15 @@ export function Apply() {
                         </div>
                         <div className="flex items-baseline justify-between gap-3 py-2">
                           <dt className="text-ink-soft">50% deposit</dt>
-                          <dd className="num">{formatNaira(depositFor(amount))}</dd>
+                          <dd className="text-right text-xs text-ink-soft">
+                            half the price of your measured plot, due {formatDate(scheme.depositDueOn)}
+                          </dd>
                         </div>
                         <div className="flex items-baseline justify-between gap-3 py-2">
                           <dt className="text-ink-soft">Balance</dt>
-                          <dd className="num">{formatNaira(amount - depositFor(amount))}</dd>
+                          <dd className="text-right text-xs text-ink-soft">
+                            the remaining half, due {formatDate(scheme.balanceDueOn)}
+                          </dd>
                         </div>
                       </dl>
 
@@ -688,12 +689,12 @@ export function Apply() {
                       </dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3 border-t border-line pt-2">
-                      <dt className="text-ink-soft">Plot price</dt>
-                      <dd className="num font-semibold">{formatNaira(amount)}</dd>
+                      <dt className="text-ink-soft">Rate</dt>
+                      <dd className="num">{formatNaira(scheme.pricePerSqm)}/sqm</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-ink-soft">50% deposit</dt>
-                      <dd className="num">{formatNaira(depositFor(amount))}</dd>
+                      <dt className="text-ink-soft">Price</dt>
+                      <dd className="text-right text-xs text-ink-soft">measured size × rate</dd>
                     </div>
                   </dl>
                 </section>

@@ -18,9 +18,7 @@ import {
   describePolicy,
   describeTier,
   milestoneLabel,
-  outstandingFor,
   positionReason,
-  priceForPlot,
   queuePosition,
   remainingPlots,
   schemeTotals,
@@ -54,11 +52,10 @@ export function Overview() {
   const policy = describePolicy(settingsQuery.data?.allocationPolicy ?? 'cadre-priority-same-day');
   const position = latest ? queuePosition(all, latest, policy.id) : null;
   const collected = sumBy(all, (item) => item.paid);
-  const committed = sumBy(all, (item) => item.amount);
 
   const milestones = [
     { label: 'Applications close', date: scheme.closesOn, note: 'No applications after this date' },
-    { label: '50% deposit due', date: scheme.depositDueOn, note: 'Half of the plot price' },
+    { label: '50% deposit due', date: scheme.depositDueOn, note: 'Half of the measured plot value' },
     { label: 'Balance due', date: scheme.balanceDueOn, note: 'Temporary allocation after this' },
   ];
 
@@ -92,9 +89,9 @@ export function Overview() {
           context={latest ? latest.reference : `Start one before ${formatDate(scheme.closesOn)}`}
         />
         <Kpi
-          label="Next milestone"
-          value={latest ? formatCompactNaira(outstandingFor(latest)) : formatCompactNaira(scheme.applicationFee)}
-          context={latest ? milestoneLabel(latest) : 'Application fee'}
+          label="Recorded payments"
+          value={formatCompactNaira(latest?.paid ?? 0)}
+          context={latest ? milestoneLabel(latest) : 'No application yet'}
         />
       </section>
 
@@ -118,7 +115,6 @@ export function Overview() {
               <thead>
                 <tr>
                   <th scope="col">Plot size</th>
-                  <th scope="col">Plot price</th>
                   <th scope="col" className="w-[30%]">
                     Allocated
                   </th>
@@ -140,9 +136,6 @@ export function Overview() {
                             className="mt-0.5"
                           />
                         </Link>
-                      </td>
-                      <td className="num whitespace-nowrap">
-                        {formatNaira(priceForPlot(tier.sizeSqm, scheme.pricePerSqm))}
                       </td>
                       <td className="min-w-[9rem]">
                         <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
@@ -179,9 +172,6 @@ export function Overview() {
                   </div>
                   <div className="mt-2">
                     <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
-                    <p className="num mt-1 text-xs text-ink-soft">
-                      {formatNaira(priceForPlot(tier.sizeSqm, scheme.pricePerSqm))} per plot
-                    </p>
                   </div>
                 </li>
               );
@@ -211,16 +201,12 @@ export function Overview() {
                 </p>
                 <dl className="mt-3 border-t border-line pt-3 text-sm">
                   <div className="flex items-baseline justify-between gap-3 py-1">
-                    <dt className="text-ink-soft">Plot price</dt>
-                    <dd className="num">{formatNaira(latest.amount)}</dd>
+                    <dt className="text-ink-soft">Rate</dt>
+                    <dd className="num">{formatNaira(scheme.pricePerSqm)}/sqm</dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-3 py-1">
                     <dt className="text-ink-soft">Paid</dt>
                     <dd className="num">{formatNaira(latest.paid)}</dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3 py-1">
-                    <dt className="text-ink-soft">Outstanding</dt>
-                    <dd className="num font-semibold">{formatNaira(outstandingFor(latest))}</dd>
                   </div>
                 </dl>
                 <Link
@@ -295,7 +281,6 @@ export function Overview() {
                   </p>
                 </Link>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="num text-sm">{formatNaira(item.amount)}</span>
                   <ApplicationPill status={item.status} />
                 </div>
               </li>
@@ -315,14 +300,6 @@ export function Overview() {
             <div className="flex items-baseline justify-between gap-3 py-2">
               <dt className="text-ink-soft">Square metres</dt>
               <dd className="num">{totals.squareMetres.toLocaleString('en-NG')}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3 py-2">
-              <dt className="text-ink-soft">Value at published rate</dt>
-              <dd className="num">{formatCompactNaira(totals.value)}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3 py-2">
-              <dt className="text-ink-soft">Committed by applicants</dt>
-              <dd className="num">{formatCompactNaira(committed)}</dd>
             </div>
             <div className="flex items-baseline justify-between gap-3 py-2">
               <dt className="text-ink-soft">Collected</dt>

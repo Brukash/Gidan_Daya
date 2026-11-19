@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SAMPLE_TIERS } from '../data/seed';
 import { useScheme } from '../data/scheme';
-import { allocationPercent, describeTier, priceForPlot, remainingPlots } from '../lib/allocations';
-import { formatCompactNaira, formatNaira, formatSqm } from '../lib/format';
+import { allocationPercent, describeTier, remainingPlots } from '../lib/allocations';
+import { formatNaira, formatSqm } from '../lib/format';
 import { Passbook, PlotsLeft, TierPill } from './ui';
 
 /** A hand-built replica of the plot screen — interactive, not a screenshot. */
@@ -16,7 +16,6 @@ export function SchemeWindow() {
 
   const status = describeTier(active, scheme.closesOn);
   const percent = allocationPercent(active.allocated, active.totalPlots);
-  const price = priceForPlot(active.sizeSqm, scheme.pricePerSqm);
 
   return (
     <div className="overflow-hidden rounded-sm border border-line bg-paper-2 shadow-[0_1px_0_#fff_inset,0_18px_40px_-24px_rgb(26_36_32_/_0.45)]">
@@ -95,18 +94,14 @@ export function SchemeWindow() {
             </div>
           </div>
 
-          <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3">
-            <div>
-              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Plot price</dt>
-              <dd className="num mt-0.5 text-[0.8125rem] font-semibold text-ink">{formatCompactNaira(price)}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">50% deposit</dt>
-              <dd className="num mt-0.5 text-[0.8125rem] font-semibold text-ink">{formatCompactNaira(price / 2)}</dd>
-            </div>
+          <dl className="mt-4 grid grid-cols-2 gap-2 border-t border-line pt-3">
             <div>
               <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Rate</dt>
               <dd className="num mt-0.5 text-[0.8125rem] font-semibold text-ink">{formatNaira(scheme.pricePerSqm)}/sqm</dd>
+            </div>
+            <div>
+              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Deposit</dt>
+              <dd className="mt-0.5 text-[0.8125rem] font-semibold text-ink">50% of the measured plot value</dd>
             </div>
           </dl>
 

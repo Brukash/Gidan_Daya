@@ -6,7 +6,7 @@ import { EmptyState, ErrorBlock, LoadingBlock, PageHeader } from '../components/
 import { gradeLabel } from '../data/grades';
 import { listMembers } from '../data/repository';
 import { hasPriority } from '../lib/allocations';
-import { formatDate, formatNaira } from '../lib/format';
+import { formatDate } from '../lib/format';
 import { memberCategoryLabel } from '../lib/validation';
 
 export function Members() {
@@ -50,7 +50,7 @@ export function Members() {
       <PageHeader
         eyebrow="Secretariat"
         title="Applicant register"
-        description="Every applicant with a plot on this scheme. Committed figures come from their applications at the published rate."
+        description="Every applicant with a plot on this scheme, with the grade, category and plot count on record."
         actions={
           <div className="sm:w-72">
             <label htmlFor="member-search" className="sr-only">
@@ -96,7 +96,6 @@ export function Members() {
                       <th scope="col">Role</th>
                       <th scope="col">Joined</th>
                       <th scope="col">Plots</th>
-                      <th scope="col">Committed</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -124,7 +123,6 @@ export function Members() {
                         </td>
                         <td className="whitespace-nowrap text-ink-soft">{formatDate(member.joinedOn)}</td>
                         <td className="num">{member.plots}</td>
-                        <td className="num whitespace-nowrap">{formatNaira(member.committed)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -160,10 +158,6 @@ export function Members() {
                     <div>
                       <dt className="inline">Plots </dt>
                       <dd className="num inline">{member.plots}</dd>
-                    </div>
-                    <div>
-                      <dt className="inline">Committed </dt>
-                      <dd className="num inline text-ink">{formatNaira(member.committed)}</dd>
                     </div>
                   </dl>
                 </li>

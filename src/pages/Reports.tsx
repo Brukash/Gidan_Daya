@@ -48,9 +48,7 @@ export function Reports() {
   const policy = describePolicy(settingsQuery.data?.allocationPolicy ?? 'cadre-priority-same-day');
   const queue = allocationOrder(apps, policy.id);
   const confirmedQueue = queue.filter((item) => item.confirmedOn !== null);
-  const committed = sumBy(apps, (item) => item.amount);
   const collected = sumBy(apps, (item) => item.paid);
-  const outstanding = Math.max(0, committed - collected);
   const fees = apps.filter((item) => item.feePaid).length * scheme.applicationFee;
   const priorityCount = apps.filter((item) => hasPriority(item.cadre)).length;
 
@@ -102,7 +100,7 @@ export function Reports() {
       <PageHeader
         eyebrow="Gidan Daya"
         title="Allocation report"
-        description={`${totals.plots} plots · ${formatNaira(scheme.pricePerSqm)} per sqm · ${totals.squareMetres.toLocaleString('en-NG')} sqm at ${formatCompactNaira(totals.value)}. Totals are derived, not typed in.`}
+        description={`${totals.plots} plots · ${formatNaira(scheme.pricePerSqm)} per sqm · ${totals.squareMetres.toLocaleString('en-NG')} sqm. Totals are derived, not typed in.`}
         actions={
           <>
             <Button variant="ghost" onClick={() => void onRegister()} disabled={busy !== null || apps.length === 0}>
@@ -128,12 +126,15 @@ export function Reports() {
               value={String(apps.length)}
               context={`${priorityCount} from priority grades`}
             />
-            <Kpi label="Committed" value={formatCompactNaira(committed)} context="Plot value on all applications" />
-            <Kpi label="Collected" value={formatCompactNaira(collected)} context={`Fees recorded ${formatCompactNaira(fees)}`} />
             <Kpi
-              label="Outstanding"
-              value={formatCompactNaira(outstanding)}
-              context={`Balance falls due ${formatDate(scheme.balanceDueOn)}`}
+              label="Collected"
+              value={formatCompactNaira(collected)}
+              context="Payments confirmed on applications"
+            />
+            <Kpi
+              label="Application fees"
+              value={formatCompactNaira(fees)}
+              context={`Non-refundable ${formatNaira(scheme.applicationFee)} fee`}
             />
           </section>
 
@@ -159,8 +160,6 @@ export function Reports() {
                       Allocated
                     </th>
                     <th scope="col">Applications</th>
-                    <th scope="col">Price</th>
-                    <th scope="col">Committed</th>
                     <th scope="col">Collected</th>
                     <th scope="col">Remaining</th>
                   </tr>
@@ -179,8 +178,6 @@ export function Reports() {
                           </span>
                         </td>
                         <td className="num">{own.length}</td>
-                        <td className="num whitespace-nowrap">{formatNaira(tier.sizeSqm * scheme.pricePerSqm)}</td>
-                        <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.amount))}</td>
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.paid))}</td>
                         <td>
                           <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />

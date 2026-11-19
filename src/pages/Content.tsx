@@ -14,19 +14,18 @@ import {
 import { listAudit, listTiers, saveSchemeContent, saveTierTotals } from '../data/repository';
 import { useScheme } from '../data/scheme';
 import type { PlotTier, SchemeContent } from '../data/types';
-import { depositFor, priceForPlot, remainingPlots } from '../lib/allocations';
+import { remainingPlots } from '../lib/allocations';
 import {
   MAX_SITE_VISITS,
   NOTICE_MAX,
   contentFromValues,
   describeContentChanges,
-  draftRate,
   formFromContent,
   parseContentForm,
   tierTotalsProblem,
   type ContentForm,
 } from '../lib/content';
-import { formatDate, formatDateTime, formatNaira, formatSqm } from '../lib/format';
+import { formatDate, formatDateTime, formatSqm } from '../lib/format';
 
 /**
  * The secretariat's editor for everything the app publishes: the rate, the fee,
@@ -124,7 +123,6 @@ export function Content() {
   );
   const dirty = changes.length > 0 || tierChanges.length > 0;
 
-  const rate = draftRate(form, content.scheme.pricePerSqm);
   const lastChange = (auditQuery.data ?? []).find((event) => event.action === 'Scheme content updated');
 
   const addVisit = () => setForm({ siteVisitDates: [...form.siteVisitDates, ''] });
@@ -212,8 +210,9 @@ export function Content() {
           <section className="card-raised p-4 sm:p-5">
             <h2 className="text-[1.05rem]">Rate and fee</h2>
             <p className="mt-1 text-xs text-ink-soft">
-              The rate is what every plot price is worked out from. Changing it re-prices the prices shown to
-              applicants, not the amounts already recorded on an application.
+              Every plot is priced at this rate per square metre, applied to the size measured after survey. No fixed
+              plot price or deposit is published; changing the rate re-prices the scheme, not the amounts already
+              recorded on an application.
             </p>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -255,29 +254,6 @@ export function Content() {
                 />
               </Field>
             </div>
-
-            <table className="ledger mt-4">
-              <caption className="sr-only">Plot prices at the rate above</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Plot size</th>
-                  <th scope="col">Price at {formatNaira(rate)}/sqm</th>
-                  <th scope="col">50% deposit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tiers.map((tier) => {
-                  const price = priceForPlot(tier.sizeSqm, rate);
-                  return (
-                    <tr key={tier.id}>
-                      <td className="font-medium">{formatSqm(tier.sizeSqm)}</td>
-                      <td className="num">{formatNaira(price)}</td>
-                      <td className="num text-ink-soft">{formatNaira(depositFor(price))}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </section>
 
           <section className="card-raised p-4 sm:p-5">

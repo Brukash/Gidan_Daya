@@ -154,10 +154,6 @@ function PaymentSchedule({ application }: { application: ApplicationRecord }) {
               </div>
               <dl className="mt-2 flex gap-6 text-xs">
                 <div>
-                  <dt className="text-ink-soft">Amount</dt>
-                  <dd className="num mt-0.5 text-sm">{formatNaira(row.amount)}</dd>
-                </div>
-                <div>
                   <dt className="text-ink-soft">Recorded</dt>
                   <dd className="num mt-0.5 text-sm">{formatNaira(row.paid)}</dd>
                 </div>
@@ -174,7 +170,6 @@ function PaymentSchedule({ application }: { application: ApplicationRecord }) {
           <tr>
             <th scope="col">Instalment</th>
             <th scope="col">Due</th>
-            <th scope="col">Amount</th>
             <th scope="col">Recorded</th>
             <th scope="col">State</th>
           </tr>
@@ -189,7 +184,6 @@ function PaymentSchedule({ application }: { application: ApplicationRecord }) {
                   <span className="text-xs text-ink-soft">{row.note}</span>
                 </td>
                 <td className="whitespace-nowrap text-ink-soft">{row.due}</td>
-                <td className="num whitespace-nowrap">{formatNaira(row.amount)}</td>
                 <td className="num whitespace-nowrap text-ink-soft">{formatNaira(row.paid)}</td>
                 <td>
                   <span
@@ -211,7 +205,6 @@ function PaymentSchedule({ application }: { application: ApplicationRecord }) {
 }
 
 function EvidenceUpload({ application }: { application: ApplicationRecord }) {
-  const { scheme } = useScheme();
   const { user } = useSession();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -219,9 +212,7 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
   const outstanding = outstandingFor(application);
   const defaultKind: PaymentKind = application.paid === 0 ? 'deposit' : 'balance';
   const [kind, setKind] = useState<PaymentKind>(defaultKind);
-  const [amount, setAmount] = useState<string>(
-    String(instalmentGap(application, defaultKind, scheme.applicationFee)),
-  );
+  const [amount, setAmount] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fileKey, setFileKey] = useState(0);
@@ -246,7 +237,7 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
   if (outstanding === 0) {
     return (
       <p className="border-t border-line px-4 py-4 text-sm text-ink-soft">
-        The full plot price is recorded against this application. Nothing further to attach unless the secretariat asks
+        The full balance is recorded against this application. Nothing further to attach unless the secretariat asks
         for a document.
       </p>
     );
@@ -290,7 +281,7 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
             onChange={(event) => {
               const nextKind = event.target.value as PaymentKind;
               setKind(nextKind);
-              setAmount(String(instalmentGap(application, nextKind, scheme.applicationFee)));
+              setAmount('');
             }}
           >
             <option value="deposit">50% deposit</option>
@@ -327,8 +318,9 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="num text-xs text-ink-soft">
-          Outstanding on this application: {formatNaira(outstanding)}
+        <p className="text-xs text-ink-soft">
+          Enter the amount shown on the receipt you are attaching. The secretariat checks it against the project
+          account.
         </p>
         <Button type="submit" variant="forest" disabled={mutation.isPending}>
           {mutation.isPending ? 'Attaching…' : 'Attach evidence'}
@@ -336,12 +328,6 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
       </div>
     </form>
   );
-}
-
-function instalmentGap(application: ApplicationRecord, kind: PaymentKind, applicationFee: number): number {
-  if (kind === 'application-fee') return application.feePaid ? 0 : applicationFee;
-  if (kind === 'deposit') return Math.max(0, depositFor(application.amount) - application.paid);
-  return Math.max(0, application.amount - Math.max(depositFor(application.amount), application.paid));
 }
 
 function ReviewControls({
@@ -418,7 +404,7 @@ function ReviewControls({
         onChange={(event) => setNote(event.target.value)}
         placeholder={
           decision === 'verified'
-            ? 'UBA credit alert of ₦4,050,000 on 13 Nov, narration carries the ID number.'
+            ? 'UBA credit alert on 13 Nov, narration carries the ID number.'
             : 'The receipt shows a different amount and no narration.'
         }
         aria-invalid={Boolean(error)}
@@ -566,7 +552,7 @@ export function Application() {
       ]);
       toast({
         title: `Payment recorded on ${updated.reference}`,
-        detail: `${formatNaira(updated.paid)} of ${formatNaira(updated.amount)} now recorded.`,
+        detail: `${formatNaira(updated.paid)} now recorded.`,
       });
     },
     onError: (error: Error) => toast({ title: 'Could not record the payment', detail: error.message }),
@@ -664,18 +650,14 @@ export function Application() {
 
           <StatusTrack status={currentApplication.status} />
 
-          <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-line pt-4 sm:grid-cols-4">
+          <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-line pt-4 sm:grid-cols-3">
             <div>
-              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Plot price</dt>
-              <dd className="num mt-1 text-sm font-semibold">{formatNaira(currentApplication.amount)}</dd>
+              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Rate</dt>
+              <dd className="num mt-1 text-sm font-semibold">{formatNaira(scheme.pricePerSqm)}/sqm</dd>
             </div>
             <div>
               <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Recorded</dt>
               <dd className="num mt-1 text-sm font-semibold">{formatNaira(currentApplication.paid)}</dd>
-            </div>
-            <div>
-              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Outstanding</dt>
-              <dd className="num mt-1 text-sm font-semibold text-clay-deep">{formatNaira(outstandingFor(currentApplication))}</dd>
             </div>
             <div>
               <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Grade priority</dt>
@@ -718,7 +700,7 @@ export function Application() {
                     disabled={payment.isPending}
                     onClick={() => payment.mutate({ application: currentApplication, amount: depositGap })}
                   >
-                    Record 50% deposit ({formatNaira(depositGap)})
+                    Record 50% deposit
                   </Button>
                 ) : null}
                 {balanceGap > 0 ? (
@@ -727,7 +709,7 @@ export function Application() {
                     disabled={payment.isPending}
                     onClick={() => payment.mutate({ application: currentApplication, amount: balanceGap })}
                   >
-                    Record final balance ({formatNaira(balanceGap)})
+                    Record final balance
                   </Button>
                 ) : null}
               </div>
@@ -806,7 +788,9 @@ export function Application() {
         <div className="border-b border-line px-4 py-3">
           <h2 className="text-[1.05rem]">Payment schedule</h2>
           <p className="text-xs text-ink-soft">
-            Figures are the published rate of {formatNaira(scheme.pricePerSqm)} per sqm, infrastructure inclusive.
+            Deposit and balance dates for this application, worked out at {formatNaira(scheme.pricePerSqm)} per sqm on
+            the size allocated after survey. Only payments the secretariat has confirmed are recorded.
+
           </p>
         </div>
         <PaymentSchedule application={currentApplication} />
@@ -854,7 +838,6 @@ export function Application() {
                   <th scope="col">Reference</th>
                   <th scope="col">Plot</th>
                   <th scope="col">Design</th>
-                  <th scope="col">Price</th>
                   <th scope="col">Paid</th>
                   <th scope="col">Status</th>
                 </tr>
@@ -867,7 +850,6 @@ export function Application() {
                     <td className="text-ink-soft">
                       {item.houseDesign === 'detached' ? 'Detached' : 'Semi-detached'}
                     </td>
-                    <td className="num">{formatNaira(item.amount)}</td>
                     <td className="num text-ink-soft">{formatNaira(item.paid)}</td>
                     <td>
                       <span className="text-sm">{STATUS_LABEL[item.status]}</span>

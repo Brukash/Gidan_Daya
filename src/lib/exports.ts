@@ -1,12 +1,5 @@
 import type { Application, Member, PlotTier, Scheme } from '../data/types';
-import {
-  allocationPercent,
-  depositFor,
-  hasPriority,
-  outstandingFor,
-  remainingPlots,
-  STATUS_LABEL,
-} from './allocations';
+import { allocationPercent, depositFor, hasPriority, remainingPlots, STATUS_LABEL } from './allocations';
 import { formatDate, formatNaira, formatSqm } from './format';
 
 const FOREST: [number, number, number] = [18, 54, 40];
@@ -85,7 +78,8 @@ export async function exportApplicationPdf(application: Application, scheme: Sch
       ['Plot size', formatSqm(application.sizeSqm)],
       ['House design', application.houseDesign === 'detached' ? '4-bedroom detached duplex' : '4-bedroom semi-detached duplex'],
       ['Rate', `${formatNaira(scheme.pricePerSqm)} per sqm, infrastructure inclusive`],
-      ['Plot price', formatNaira(application.amount)],
+      ['Price basis', 'Measured size after survey × rate'],
+      ['Payments recorded', formatNaira(application.paid)],
       ['Application fee', `${formatNaira(scheme.applicationFee)} non-refundable — paid`],
       ['Grade', application.cadre],
       ['Status', STATUS_LABEL[application.status]],
@@ -100,30 +94,23 @@ export async function exportApplicationPdf(application: Application, scheme: Sch
 
   autoTable(doc, {
     startY: afterSummary + 18,
-    head: [['Payment', 'Due', 'Amount', 'Paid']],
+    head: [['Payment', 'Due', 'Recorded']],
     body: [
-      [
-        'Application fee',
-        'On application',
-        formatNaira(scheme.applicationFee),
-        application.feePaid ? 'Paid' : 'Outstanding',
-      ],
+      ['Application fee', 'On application', application.feePaid ? 'Paid' : 'Outstanding'],
       [
         '50% deposit',
         formatDate(scheme.depositDueOn),
-        formatNaira(depositFor(application.amount)),
         formatNaira(Math.min(application.paid, depositFor(application.amount))),
       ],
       [
         'Balance',
         formatDate(scheme.balanceDueOn),
-        formatNaira(application.amount - depositFor(application.amount)),
         formatNaira(Math.max(0, application.paid - depositFor(application.amount))),
       ],
     ],
     styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 6, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
     headStyles: { fillColor: [28, 74, 54], textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 8 },
-    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
+    columnStyles: { 2: { halign: 'right' } },
     margin: { left: 40, right: 40 },
   });
 
@@ -137,8 +124,7 @@ export async function exportApplicationPdf(application: Application, scheme: Sch
   cursor += 14;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(26, 36, 32);
-  doc.text(`Paid ${formatNaira(application.paid)}`, 40, cursor);
-  doc.text(`Outstanding ${formatNaira(outstandingFor(application))}`, 200, cursor);
+  doc.text(`Recorded ${formatNaira(application.paid)}`, 40, cursor);
 
   cursor += 26;
   doc.setFontSize(8);
@@ -175,7 +161,11 @@ export async function exportRegisterPdf(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(74, 87, 81);
-  doc.text('CBN Staff Multipurpose Cooperative Society Estate · plot register', margin, 58);
+  doc.text(
+    `CBN Staff Multipurpose Cooperative Society Estate · plot register · ${formatNaira(scheme.pricePerSqm)} per sqm`,
+    margin,
+    58,
+  );
   doc.text(`Generated ${formatDate(new Date().toISOString())}`, width - margin, 58, { align: 'right' });
 
   doc.setDrawColor(220, 213, 196);
@@ -183,21 +173,17 @@ export async function exportRegisterPdf(
 
   autoTable(doc, {
     startY: 82,
-    head: [['Plot size', 'Plots', 'Allocated', 'Remaining', 'Price', '50% deposit']],
-    body: tiers.map((tier) => {
-      const price = tier.sizeSqm * scheme.pricePerSqm;
-      return [
-        formatSqm(tier.sizeSqm),
-        tier.totalPlots,
-        tier.allocated,
-        remainingPlots(tier),
-        formatNaira(price),
-        formatNaira(depositFor(price)),
-      ];
-    }),
+    head: [['Plot size', 'Plots', 'Allocated', 'Remaining', 'Rate per sqm']],
+    body: tiers.map((tier) => [
+      formatSqm(tier.sizeSqm),
+      tier.totalPlots,
+      tier.allocated,
+      remainingPlots(tier),
+      formatNaira(scheme.pricePerSqm),
+    ]),
     styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 5, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
     headStyles: { fillColor: FOREST, textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 8 },
-    columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' } },
+    columnStyles: { 4: { halign: 'right' } },
     margin: { left: margin, right: margin },
   });
 
@@ -205,22 +191,20 @@ export async function exportRegisterPdf(
 
   autoTable(doc, {
     startY: afterTiers + 20,
-    head: [['Reference', 'Applicant', 'Member ID', 'Grade', 'Plot', 'Price', 'Paid', 'Outstanding', 'Status', 'Applied']],
+    head: [['Reference', 'Applicant', 'Member ID', 'Grade', 'Plot', 'Paid', 'Status', 'Applied']],
     body: applications.map((item) => [
       item.reference,
       item.memberName,
       item.memberNumber,
       item.cadre,
       formatSqm(item.sizeSqm),
-      formatNaira(item.amount),
       formatNaira(item.paid),
-      formatNaira(outstandingFor(item)),
       STATUS_LABEL[item.status],
       formatDate(item.createdAt),
     ]),
     styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 4.5, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
     headStyles: { fillColor: [28, 74, 54], textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 7.5 },
-    columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+    columnStyles: { 5: { halign: 'right' } },
     margin: { left: margin, right: margin },
     didDrawPage: () => {
       doc.setFont('helvetica', 'normal');
@@ -259,19 +243,16 @@ export async function exportAllocationXlsx(
     { header: 'Allocated', key: 'allocated', width: 12 },
     { header: 'Remaining', key: 'remaining', width: 12 },
     { header: 'Allocated %', key: 'percent', width: 12 },
-    { header: 'Price (NGN)', key: 'price', width: 16, style: { numFmt: '#,##0' } },
-    { header: '50% deposit (NGN)', key: 'deposit', width: 18, style: { numFmt: '#,##0' } },
+    { header: 'Rate (NGN/sqm)', key: 'rate', width: 16, style: { numFmt: '#,##0' } },
   ];
   for (const tier of tiers) {
-    const price = tier.sizeSqm * scheme.pricePerSqm;
     tierSheet.addRow({
       size: tier.sizeSqm,
       total: tier.totalPlots,
       allocated: tier.allocated,
       remaining: remainingPlots(tier),
       percent: allocationPercent(tier.allocated, tier.totalPlots),
-      price,
-      deposit: depositFor(price),
+      rate: scheme.pricePerSqm,
     });
   }
 
@@ -285,9 +266,7 @@ export async function exportAllocationXlsx(
     { header: 'Grade', key: 'cadre', width: 22 },
     { header: 'Plot (sqm)', key: 'sizeSqm', width: 11 },
     { header: 'Design', key: 'design', width: 26 },
-    { header: 'Price (NGN)', key: 'amount', width: 15, style: { numFmt: '#,##0' } },
     { header: 'Paid (NGN)', key: 'paid', width: 15, style: { numFmt: '#,##0' } },
-    { header: 'Outstanding (NGN)', key: 'outstanding', width: 18, style: { numFmt: '#,##0' } },
     { header: 'Grade priority', key: 'priority', width: 14 },
     { header: 'Status', key: 'status', width: 20 },
     { header: 'Applied', key: 'createdAt', width: 13 },
@@ -300,9 +279,7 @@ export async function exportAllocationXlsx(
       cadre: item.cadre,
       sizeSqm: item.sizeSqm,
       design: item.houseDesign === 'detached' ? 'Detached duplex' : 'Semi-detached duplex',
-      amount: item.amount,
       paid: item.paid,
-      outstanding: outstandingFor(item),
       priority: hasPriority(item.cadre) ? 'Yes' : 'No',
       status: STATUS_LABEL[item.status],
       createdAt: formatDate(item.createdAt),
@@ -317,7 +294,6 @@ export async function exportAllocationXlsx(
     { header: 'Role', key: 'role', width: 13 },
     { header: 'Joined', key: 'joinedOn', width: 13 },
     { header: 'Plots', key: 'plots', width: 8 },
-    { header: 'Committed (NGN)', key: 'committed', width: 18, style: { numFmt: '#,##0' } },
   ];
   for (const member of members) {
     memberSheet.addRow({
@@ -327,7 +303,6 @@ export async function exportAllocationXlsx(
       role: member.role === 'admin' ? 'Secretariat' : 'Member',
       joinedOn: formatDate(member.joinedOn),
       plots: member.plots,
-      committed: member.committed,
     });
   }
 

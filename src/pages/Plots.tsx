@@ -3,14 +3,7 @@ import { Link } from 'react-router-dom';
 import { ErrorBlock, LoadingBlock, PageHeader, Passbook, PlotsLeft, TierPill } from '../components/ui';
 import { listTiers } from '../data/repository';
 import { useScheme } from '../data/scheme';
-import {
-  allocationPercent,
-  depositFor,
-  describeTier,
-  priceForPlot,
-  remainingPlots,
-  schemeTotals,
-} from '../lib/allocations';
+import { allocationPercent, describeTier, remainingPlots, schemeTotals } from '../lib/allocations';
 import { formatNaira, formatSqm } from '../lib/format';
 
 export function Plots() {
@@ -39,7 +32,6 @@ export function Plots() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {tiers.map((tier) => {
           const status = describeTier(tier, scheme.closesOn);
-          const price = priceForPlot(tier.sizeSqm, scheme.pricePerSqm);
           const soldOut = remainingPlots(tier) === 0;
 
           return (
@@ -51,8 +43,7 @@ export function Plots() {
 
               <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} className="mt-3" />
 
-              <p className="num mt-1.5 font-display text-[1.15rem] text-forest">{formatNaira(price)}</p>
-              <p className="num text-xs text-ink-soft">50% deposit {formatNaira(depositFor(price))}</p>
+              <p className="num mt-1.5 text-xs text-ink-soft">{formatNaira(scheme.pricePerSqm)} per sqm</p>
 
               <div className="mt-3">
                 <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -93,13 +84,10 @@ export function Plots() {
                 <th scope="col">Plots</th>
                 <th scope="col">Allocated</th>
                 <th scope="col">Remaining</th>
-                <th scope="col">Price at {formatNaira(scheme.pricePerSqm)}/sqm</th>
-                <th scope="col">50% deposit</th>
               </tr>
             </thead>
             <tbody>
               {tiers.map((tier) => {
-                const price = priceForPlot(tier.sizeSqm, scheme.pricePerSqm);
                 return (
                   <tr key={tier.id}>
                     <td className="font-medium">{formatSqm(tier.sizeSqm)}</td>
@@ -108,8 +96,6 @@ export function Plots() {
                     <td>
                       <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />
                     </td>
-                    <td className="num">{formatNaira(price)}</td>
-                    <td className="num text-ink-soft">{formatNaira(depositFor(price))}</td>
                   </tr>
                 );
               })}
@@ -119,8 +105,9 @@ export function Plots() {
       </section>
 
       <p className="max-w-3xl text-xs leading-relaxed text-ink-soft">
-        Plot sizes are subject to the size allocated after survey. Additional square metres are payable by the
-        subscriber at the published rate; payments in excess of the allotted size are refunded unconditionally.
+        Advertised sizes are indicative. The plot allocated is measured after survey, and the final price is the
+        measured size multiplied by {formatNaira(scheme.pricePerSqm)} per sqm; extra square metres are payable at that
+        rate and payments in excess of the allotted size are refunded unconditionally.
       </p>
     </div>
   );
