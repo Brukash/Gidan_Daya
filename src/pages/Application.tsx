@@ -46,6 +46,7 @@ import {
   EVIDENCE_MAX_BYTES,
   EVIDENCE_TYPE_LABEL,
   evidenceProblem,
+  memberCategoryLabel,
   paymentAmountProblem,
   reviewNoteProblem,
 } from '../lib/validation';
@@ -629,6 +630,9 @@ export function Application() {
                 {currentApplication.houseDesign === 'detached'
                   ? '4-bedroom detached duplex'
                   : '4-bedroom semi-detached duplex'}
+              </p>
+              <p className="mt-1 text-xs text-ink-soft">
+                {memberCategoryLabel(currentApplication.memberCategory)} · {currentApplication.cadre}
               </p>
             </div>
             <ApplicationPill status={currentApplication.status} />

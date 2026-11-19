@@ -16,10 +16,17 @@ import {
 import { createApplication, getSettings, listTiers } from '../data/repository';
 import { SCHEME } from '../data/seed';
 import { TERMS_CLAUSES, TERMS_EFFECTIVE_ON, TERMS_VERSION } from '../data/terms';
-import type { Cadre, HouseDesign } from '../data/types';
+import type { Cadre, HouseDesign, MemberCategory } from '../data/types';
 import { depositFor, describePolicy, priceForPlot, remainingPlots } from '../lib/allocations';
 import { formatDate, formatNaira, formatSqm } from '../lib/format';
-import { CADRES, HOUSE_DESIGNS, applicationDetailsSchema, applicationSchema } from '../lib/validation';
+import {
+  CADRES,
+  HOUSE_DESIGNS,
+  MEMBER_CATEGORIES,
+  applicationDetailsSchema,
+  applicationSchema,
+  memberCategoryLabel,
+} from '../lib/validation';
 
 export function Apply() {
   const { user } = useSession();
@@ -37,6 +44,7 @@ export function Apply() {
   const [houseDesign, setHouseDesign] = useState<HouseDesign>('semi-detached');
   const [memberNumber, setMemberNumber] = useState(user?.memberNumber ?? '');
   const [cadre, setCadre] = useState<Cadre>(user?.cadre ?? 'Clerk');
+  const [memberCategory, setMemberCategory] = useState<MemberCategory | ''>('');
   const [accepted, setAccepted] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -84,6 +92,7 @@ export function Apply() {
       houseDesign,
       memberNumber,
       cadre,
+      memberCategory,
     });
 
     if (!parsed.success) {
@@ -116,6 +125,7 @@ export function Apply() {
       houseDesign,
       memberNumber,
       cadre,
+      memberCategory,
       acceptedClauses: accepted,
     });
 
@@ -135,6 +145,7 @@ export function Apply() {
       memberName: parsed.data.applicantName,
       memberNumber: parsed.data.memberNumber.toUpperCase(),
       cadre: parsed.data.cadre,
+      memberCategory: parsed.data.memberCategory as MemberCategory,
       sizeSqm: parsed.data.sizeSqm,
       houseDesign: parsed.data.houseDesign,
       acceptedClauses: parsed.data.acceptedClauses,
@@ -362,6 +373,32 @@ export function Apply() {
                         ))}
                       </select>
                     </Field>
+
+                    <Field
+                      label="Member category"
+                      htmlFor="memberCategory"
+                      hint="As the cooperative records you today."
+                      error={errors.memberCategory}
+                    >
+                      <select
+                        id="memberCategory"
+                        name="memberCategory"
+                        className={`input${errors.memberCategory ? ' input-invalid' : ''}`}
+                        value={memberCategory}
+                        aria-invalid={Boolean(errors.memberCategory)}
+                        onChange={(event) => {
+                          setMemberCategory(event.target.value as MemberCategory | '');
+                          setErrors((current) => ({ ...current, memberCategory: '' }));
+                        }}
+                      >
+                        <option value="">Select category</option>
+                        {MEMBER_CATEGORIES.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
                   </div>
 
                   {signedIn ? (
@@ -548,6 +585,10 @@ export function Apply() {
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-ink-soft">Cadre</dt>
                       <dd>{cadre}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">Member category</dt>
+                      <dd>{memberCategory ? memberCategoryLabel(memberCategory) : '—'}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-ink-soft">Plot</dt>

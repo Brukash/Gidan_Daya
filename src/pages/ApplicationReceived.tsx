@@ -7,6 +7,7 @@ import { SCHEME } from '../data/seed';
 import type { Application } from '../data/types';
 import { depositFor, outstandingFor } from '../lib/allocations';
 import { formatDate, formatNaira, formatSqm } from '../lib/format';
+import { memberCategoryLabel } from '../lib/validation';
 
 interface ReceiptState {
   application?: Application;
@@ -84,6 +85,10 @@ export function ApplicationReceived() {
                 <div>
                   <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Cooperative ID</dt>
                   <dd className="num mt-0.5 text-sm font-medium">{application.memberNumber}</dd>
+                </div>
+                <div>
+                  <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Member category</dt>
+                  <dd className="mt-0.5 text-sm font-medium">{memberCategoryLabel(application.memberCategory)}</dd>
                 </div>
                 <div>
                   <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Plot</dt>

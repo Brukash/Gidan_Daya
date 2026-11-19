@@ -9,6 +9,9 @@
 
 create type public.member_role as enum ('member', 'admin');
 create type public.cadre as enum ('Clerk', 'Executive Officer', 'Assistant Manager', 'Manager', 'Senior Manager');
+-- Where the member stands with the cooperative today. Chosen by the applicant
+-- and verified by the secretariat against the register.
+create type public.member_category as enum ('active', 'retiree', 'pensioner', 'coop-staff');
 create type public.house_design as enum ('semi-detached', 'detached');
 create type public.application_status as enum ('reserved', 'deposit-paid', 'fully-paid', 'allocated');
 create type public.payment_kind as enum ('application-fee', 'deposit', 'balance');
@@ -23,6 +26,7 @@ create table public.profiles (
   full_name text not null check (char_length(btrim(full_name)) between 2 and 120),
   member_number text not null unique check (member_number ~ '^[A-Z0-9/._-]{4,24}$'),
   cadre public.cadre not null default 'Clerk',
+  member_category public.member_category not null default 'active',
   role public.member_role not null default 'member',
   joined_on date not null default current_date,
   created_at timestamptz not null default now(),
@@ -77,6 +81,7 @@ create table public.applications (
   applicant_name text not null,
   member_number text not null,
   cadre public.cadre not null,
+  member_category public.member_category not null,
   size_sqm integer not null check (size_sqm between 100 and 1000),
   house_design public.house_design not null,
   amount numeric(14, 2) not null check (amount > 0),
@@ -350,6 +355,7 @@ create or replace function public.create_plot_application(
   p_house_design public.house_design,
   p_member_number text,
   p_cadre public.cadre,
+  p_member_category public.member_category,
   p_accepted_clauses text[],
   p_terms_version text
 )
@@ -420,6 +426,7 @@ begin
     applicant_name,
     member_number,
     cadre,
+    member_category,
     size_sqm,
     house_design,
     amount,
@@ -436,6 +443,7 @@ begin
     v_actor,
     upper(btrim(p_member_number)),
     p_cadre,
+    p_member_category,
     p_size_sqm,
     p_house_design,
     p_size_sqm * v_scheme.price_per_sqm,
@@ -471,8 +479,8 @@ begin
 end;
 $$;
 
-revoke all on function public.create_plot_application(integer, public.house_design, text, public.cadre, text[], text) from public;
-grant execute on function public.create_plot_application(integer, public.house_design, text, public.cadre, text[], text) to authenticated;
+revoke all on function public.create_plot_application(integer, public.house_design, text, public.cadre, public.member_category, text[], text) from public;
+grant execute on function public.create_plot_application(integer, public.house_design, text, public.cadre, public.member_category, text[], text) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Applying without an account
@@ -489,6 +497,7 @@ create or replace function public.create_public_application(
   p_house_design public.house_design,
   p_member_number text,
   p_cadre public.cadre,
+  p_member_category public.member_category,
   p_applicant_name text,
   p_accepted_clauses text[],
   p_terms_version text
@@ -558,6 +567,7 @@ begin
     applicant_name,
     member_number,
     cadre,
+    member_category,
     size_sqm,
     house_design,
     amount,
@@ -574,6 +584,7 @@ begin
     coalesce(v_member_name, v_name),
     v_number,
     p_cadre,
+    p_member_category,
     p_size_sqm,
     p_house_design,
     p_size_sqm * v_scheme.price_per_sqm,
@@ -609,8 +620,8 @@ begin
 end;
 $$;
 
-revoke all on function public.create_public_application(integer, public.house_design, text, public.cadre, text, text[], text) from public;
-grant execute on function public.create_public_application(integer, public.house_design, text, public.cadre, text, text[], text) to anon, authenticated;
+revoke all on function public.create_public_application(integer, public.house_design, text, public.cadre, public.member_category, text, text[], text) from public;
+grant execute on function public.create_public_application(integer, public.house_design, text, public.cadre, public.member_category, text, text[], text) to anon, authenticated;
 
 -- Opening a receipt needs the reference and the ID number on it; neither is
 -- enough on its own. Returns at most the one matching row.

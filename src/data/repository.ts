@@ -5,6 +5,7 @@ import type {
   Cadre,
   HouseDesign,
   Member,
+  MemberCategory,
   PaymentEvidence,
   PaymentKind,
   PlotTier,
@@ -89,6 +90,7 @@ interface ApplicationRow {
   member_id: string | null;
   member_number: string;
   cadre: Cadre;
+  member_category: MemberCategory;
   size_sqm: number;
   house_design: HouseDesign;
   amount: number;
@@ -107,6 +109,7 @@ interface MemberRow {
   full_name: string;
   member_number: string;
   cadre: Cadre;
+  member_category: MemberCategory;
   role: Member['role'];
   joined_on: string;
 }
@@ -151,6 +154,7 @@ function mapApplication(row: ApplicationRow, memberName: string): Application {
     memberName: memberName || row.applicant_name || '',
     memberNumber: row.member_number,
     cadre: row.cadre,
+    memberCategory: row.member_category,
     sizeSqm: row.size_sqm,
     houseDesign: row.house_design,
     amount: Number(row.amount),
@@ -209,10 +213,11 @@ export async function listApplications(memberId?: string): Promise<Application[]
   if (error) throw new Error(error.message);
 
   const rows = (data ?? []) as ApplicationRow[];
-  const members = await listMembers();
-  const names = new Map(members.map((member) => [member.id, member.name] as const));
 
-  return rows.map((row) => mapApplication(row, names.get(row.member_id ?? '') ?? ''));
+  // The row already carries the applicant's name. Reading the member register
+  // here would loop straight back into this function, which is why the page
+  // used to sit on "Reading the register…" forever.
+  return rows.map((row) => mapApplication(row, row.applicant_name ?? ''));
 }
 
 /**
@@ -265,6 +270,7 @@ export async function listMembers(): Promise<Member[]> {
           email: '',
           memberNumber: application.memberNumber,
           cadre: application.cadre,
+          memberCategory: application.memberCategory,
           role: 'member',
           joinedOn: application.createdAt,
           plots: 1,
@@ -277,7 +283,7 @@ export async function listMembers(): Promise<Member[]> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, member_number, cadre, role, joined_on')
+    .select('id, full_name, member_number, cadre, member_category, role, joined_on')
     .order('full_name');
   if (error) throw new Error(error.message);
 
@@ -292,6 +298,7 @@ export async function listMembers(): Promise<Member[]> {
       email: '',
       memberNumber: row.member_number,
       cadre: row.cadre,
+      memberCategory: row.member_category,
       role: row.role,
       joinedOn: row.joined_on,
       plots: own.length,
@@ -306,6 +313,7 @@ export interface NewApplication {
   memberName: string;
   memberNumber: string;
   cadre: Cadre;
+  memberCategory: MemberCategory;
   sizeSqm: number;
   houseDesign: HouseDesign;
   acceptedClauses: string[];
@@ -323,6 +331,7 @@ export async function createApplication(input: NewApplication): Promise<Applicat
           p_house_design: input.houseDesign,
           p_member_number: input.memberNumber,
           p_cadre: input.cadre,
+          p_member_category: input.memberCategory,
           p_accepted_clauses: input.acceptedClauses,
           p_terms_version: TERMS_VERSION,
         })
@@ -331,6 +340,7 @@ export async function createApplication(input: NewApplication): Promise<Applicat
           p_house_design: input.houseDesign,
           p_member_number: input.memberNumber,
           p_cadre: input.cadre,
+          p_member_category: input.memberCategory,
           p_applicant_name: input.memberName,
           p_accepted_clauses: input.acceptedClauses,
           p_terms_version: TERMS_VERSION,
@@ -359,6 +369,7 @@ export async function createApplication(input: NewApplication): Promise<Applicat
     memberName: input.memberName,
     memberNumber: input.memberNumber,
     cadre: input.cadre,
+    memberCategory: input.memberCategory,
     sizeSqm: input.sizeSqm,
     houseDesign: input.houseDesign,
     amount,

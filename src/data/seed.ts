@@ -1,4 +1,13 @@
-import type { AllocationPolicy, Application, Member, PaymentEvidence, PlotTier, Scheme, SchemeSettings } from './types';
+import type {
+  AllocationPolicy,
+  Application,
+  Member,
+  MemberCategory,
+  PaymentEvidence,
+  PlotTier,
+  Scheme,
+  SchemeSettings,
+} from './types';
 import { TERMS_CLAUSES, TERMS_VERSION } from './terms';
 
 /**
@@ -49,7 +58,9 @@ export const SAMPLE_TIERS: PlotTier[] = [
   { id: 'tier-500', sizeSqm: 500, totalPlots: 10, allocated: 4 },
 ];
 
-export const SAMPLE_MEMBERS: Member[] = [
+const SAMPLE_CATEGORIES: MemberCategory[] = ['active', 'retiree', 'pensioner', 'coop-staff'];
+
+const SAMPLE_MEMBER_ROWS: Omit<Member, 'memberCategory'>[] = [
   {
     id: 'm-001',
     name: 'Aisha Bello',
@@ -140,8 +151,14 @@ export const SAMPLE_MEMBERS: Member[] = [
   },
 ];
 
+/** The sample register spreads the four categories so each one appears. */
+export const SAMPLE_MEMBERS: Member[] = SAMPLE_MEMBER_ROWS.map((member, index) => ({
+  ...member,
+  memberCategory: SAMPLE_CATEGORIES[index % SAMPLE_CATEGORIES.length] ?? 'active',
+}));
+
 /** Sample applications. Invented applicants, so the register and reports have content. */
-export const SAMPLE_APPLICATIONS: Application[] = [
+const SAMPLE_APPLICATION_ROWS: Omit<Application, 'memberCategory'>[] = [
   {
     id: 'a-2001',
     reference: 'GD-300-0012',
@@ -233,6 +250,13 @@ export const SAMPLE_APPLICATIONS: Application[] = [
     ...ACCEPTED,
   },
 ];
+
+/** An application takes its category from the member it belongs to. */
+export const SAMPLE_APPLICATIONS: Application[] = SAMPLE_APPLICATION_ROWS.map((application) => ({
+  ...application,
+  memberCategory:
+    SAMPLE_MEMBERS.find((member) => member.id === application.memberId)?.memberCategory ?? 'active',
+}));
 
 /** Sample payment evidence, so the verification step has something to review. */
 export const SAMPLE_EVIDENCE: PaymentEvidence[] = [

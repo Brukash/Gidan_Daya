@@ -78,8 +78,8 @@ where u.id in (
 )
 on conflict do nothing;
 
-insert into public.profiles (id, full_name, member_number, cadre, role, joined_on)
+insert into public.profiles (id, full_name, member_number, cadre, member_category, role, joined_on)
 values
-  ('00000000-0000-4000-8000-000000000001', 'Secretariat (demo)', 'CBN/ADMIN/0001', 'Manager', 'admin', '2026-11-03'),
-  ('00000000-0000-4000-8000-000000000002', 'Member (demo)', 'CBN/2019/0417', 'Assistant Manager', 'member', '2026-11-03')
+  ('00000000-0000-4000-8000-000000000001', 'Secretariat (demo)', 'CBN/ADMIN/0001', 'Manager', 'coop-staff', 'admin', '2026-11-03'),
+  ('00000000-0000-4000-8000-000000000002', 'Member (demo)', 'CBN/2019/0417', 'Assistant Manager', 'active', 'member', '2026-11-03')
 on conflict (id) do nothing;

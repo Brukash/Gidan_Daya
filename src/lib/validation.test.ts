@@ -46,6 +46,7 @@ describe('applicationDetailsSchema', () => {
     houseDesign: 'semi-detached' as const,
     memberNumber: 'CBN/2019/0417',
     cadre: 'Assistant Manager' as const,
+    memberCategory: 'active' as const,
   };
 
   it('passes complete details without any acceptance yet', () => {
@@ -61,6 +62,21 @@ describe('applicationDetailsSchema', () => {
   it('rejects an ID number with spaces or symbols', () => {
     expect(schema.safeParse({ ...valid, memberNumber: 'CBN 2019 0417' }).success).toBe(false);
     expect(schema.safeParse({ ...valid, memberNumber: 'CBN/2019/0417#' }).success).toBe(false);
+  });
+
+  it('accepts each of the four member categories', () => {
+    for (const category of ['active', 'retiree', 'pensioner', 'coop-staff']) {
+      expect(schema.safeParse({ ...valid, memberCategory: category }).success).toBe(true);
+    }
+  });
+
+  it('rejects a missing or invented member category', () => {
+    const missing = schema.safeParse({ ...valid, memberCategory: '' });
+    expect(missing.success).toBe(false);
+    if (!missing.success) {
+      expect(missing.error.issues[0]?.message).toMatch(/Active, Retiree, Pensioner or Coop Staff/);
+    }
+    expect(schema.safeParse({ ...valid, memberCategory: 'contractor' }).success).toBe(false);
   });
 
   it('needs a full name, because an applicant may not be signed in', () => {
@@ -81,6 +97,7 @@ describe('applicationSchema acceptance', () => {
     houseDesign: 'detached' as const,
     memberNumber: 'CBN/2019/0417',
     cadre: 'Clerk' as const,
+    memberCategory: 'retiree' as const,
   };
 
   it('passes only when every condition is acknowledged', () => {

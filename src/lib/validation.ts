@@ -1,8 +1,22 @@
 import { z } from 'zod';
-import type { Cadre, HouseDesign } from '../data/types';
+import type { Cadre, HouseDesign, MemberCategory } from '../data/types';
 import { TERMS_CLAUSES, acceptedAllClauses } from '../data/terms';
 
 export const CADRES: Cadre[] = ['Clerk', 'Executive Officer', 'Assistant Manager', 'Manager', 'Senior Manager'];
+export const MEMBER_CATEGORIES: { id: MemberCategory; label: string }[] = [
+  { id: 'active', label: 'Active' },
+  { id: 'retiree', label: 'Retiree' },
+  { id: 'pensioner', label: 'Pensioner' },
+  { id: 'coop-staff', label: 'Coop Staff' },
+];
+
+const MEMBER_CATEGORY_IDS = MEMBER_CATEGORIES.map((item) => item.id);
+
+/** How a category reads on a receipt or in the register. */
+export function memberCategoryLabel(value: string | null | undefined): string {
+  return MEMBER_CATEGORIES.find((item) => item.id === value)?.label ?? 'Not stated';
+}
+
 export const HOUSE_DESIGNS: { id: HouseDesign; label: string }[] = [
   { id: 'semi-detached', label: '4-bedroom semi-detached duplex' },
   { id: 'detached', label: '4-bedroom detached duplex' },
@@ -49,6 +63,9 @@ export function applicationDetailsSchema(availableSizes: readonly number[]) {
       .max(24, 'That ID number is too long.')
       .regex(/^[A-Za-z0-9/._-]+$/, 'Use letters, digits, slashes or dashes only.'),
     cadre: z.enum(['Clerk', 'Executive Officer', 'Assistant Manager', 'Manager', 'Senior Manager']),
+    memberCategory: z.string().refine((value) => MEMBER_CATEGORY_IDS.includes(value as MemberCategory), {
+      message: 'Choose your member category: Active, Retiree, Pensioner or Coop Staff.',
+    }),
   });
 }
 

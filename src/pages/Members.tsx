@@ -6,6 +6,7 @@ import { EmptyState, ErrorBlock, LoadingBlock, PageHeader } from '../components/
 import { listMembers } from '../data/repository';
 import { hasPriority } from '../lib/allocations';
 import { formatDate, formatNaira } from '../lib/format';
+import { memberCategoryLabel } from '../lib/validation';
 
 export function Members() {
   const { user } = useSession();
@@ -21,7 +22,8 @@ export function Members() {
         member.name.toLowerCase().includes(needle) ||
         member.memberNumber.toLowerCase().includes(needle) ||
         member.cadre.toLowerCase().includes(needle) ||
-        member.role.includes(needle),
+        member.role.includes(needle) ||
+        memberCategoryLabel(member.memberCategory).toLowerCase().includes(needle),
     );
   }, [query.data, term]);
 
@@ -57,7 +59,7 @@ export function Members() {
               id="member-search"
               type="search"
               className="input"
-              placeholder="Search name, ID number or cadre"
+              placeholder="Search name, ID number, cadre or category"
               value={term}
               onChange={(event) => setTerm(event.target.value)}
             />
@@ -89,6 +91,7 @@ export function Members() {
                     <tr>
                       <th scope="col">Applicant</th>
                       <th scope="col">Cadre</th>
+                      <th scope="col">Category</th>
                       <th scope="col">Role</th>
                       <th scope="col">Joined</th>
                       <th scope="col">Plots</th>
@@ -108,6 +111,7 @@ export function Members() {
                             <span className="text-xs text-ink-soft">Priority cadre</span>
                           ) : null}
                         </td>
+                        <td className="whitespace-nowrap">{memberCategoryLabel(member.memberCategory)}</td>
                         <td>
                           <span
                             className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -147,6 +151,10 @@ export function Members() {
                     <div>
                       <dt className="inline">Cadre </dt>
                       <dd className="inline">{member.cadre}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline">Category </dt>
+                      <dd className="inline">{memberCategoryLabel(member.memberCategory)}</dd>
                     </div>
                     <div>
                       <dt className="inline">Plots </dt>

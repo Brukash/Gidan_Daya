@@ -1,5 +1,8 @@
 export type Cadre = 'Clerk' | 'Executive Officer' | 'Assistant Manager' | 'Manager' | 'Senior Manager';
 
+/** Where a member stands with the cooperative, as the secretariat records it. */
+export type MemberCategory = 'active' | 'retiree' | 'pensioner' | 'coop-staff';
+
 export type HouseDesign = 'semi-detached' | 'detached';
 
 export type ApplicationStatus = 'reserved' | 'deposit-paid' | 'fully-paid' | 'allocated';
@@ -51,6 +54,7 @@ export interface Application {
   memberName: string;
   memberNumber: string;
   cadre: Cadre;
+  memberCategory: MemberCategory;
   sizeSqm: number;
   houseDesign: HouseDesign;
   /** sizeSqm x pricePerSqm at the time of application. */
@@ -74,6 +78,7 @@ export interface Member {
   email: string;
   memberNumber: string;
   cadre: Cadre;
+  memberCategory: MemberCategory;
   role: MemberRole;
   joinedOn: string;
   plots: number;
