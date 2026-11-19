@@ -3,7 +3,9 @@ import { SchemeWindow } from '../components/SchemeWindow';
 import { DataModeBadge, Passbook, PlotsLeft, TierPill } from '../components/ui';
 import { useQuery } from '@tanstack/react-query';
 import { listTiers } from '../data/repository';
-import { SAMPLE_TIERS, SCHEME, SITE_VISIT } from '../data/seed';
+import { SAMPLE_TIERS } from '../data/seed';
+import { useScheme } from '../data/scheme';
+import type { Scheme } from '../data/types';
 import {
   allocationPercent,
   depositFor,
@@ -15,23 +17,40 @@ import {
 import { formatCompactNaira, formatDate, formatNaira, formatSqm } from '../lib/format';
 import { dataMode } from '../lib/supabase';
 
-const PAYMENT_STEPS = [
-  {
-    number: '01',
-    title: 'Start your subscription',
-    body: 'Complete the subscription and pay the ₦20,000 non-refundable fee by transfer, with your ID number and name in the narration. Applications close 30 December 2026.',
-  },
-  {
-    number: '02',
-    title: 'Pay 50% by 30 January 2027',
-    body: 'Half of the plot price secures your position. Allocation is first-come, first-served, determined by payment confirmation.',
-  },
-  {
-    number: '03',
-    title: 'Clear the balance by 30 June 2027',
-    body: 'The remaining half falls due on 30 June 2027. Temporary allocation letters are issued after full payment.',
-  },
-] as const;
+function paymentSteps(scheme: Scheme) {
+  return [
+    {
+      number: '01',
+      title: 'Start your subscription',
+      body: `Complete the subscription and pay the ${formatNaira(scheme.applicationFee)} non-refundable fee by transfer, with your ID number and name in the narration. Applications close ${formatDate(scheme.closesOn)}.`,
+    },
+    {
+      number: '02',
+      title: `Pay 50% by ${formatDate(scheme.depositDueOn)}`,
+      body: 'Half of the plot price secures your position. Allocation is first-come, first-served, determined by payment confirmation.',
+    },
+    {
+      number: '03',
+      title: `Clear the balance by ${formatDate(scheme.balanceDueOn)}`,
+      body: `The remaining half falls due on ${formatDate(scheme.balanceDueOn)}. Temporary allocation letters are issued after full payment.`,
+    },
+  ];
+}
+
+/** The secretariat's notice, shown only while it has something to say. */
+function NoticeBar() {
+  const { scheme } = useScheme();
+  if (!scheme.notice) return null;
+
+  return (
+    <div className="border-b border-gold/30 bg-gold-tint/70">
+      <div className="mx-auto flex max-w-[1180px] items-start gap-2.5 px-5 py-2.5 text-sm text-[#6f4d12]">
+        <span aria-hidden className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+        <p>{scheme.notice}</p>
+      </div>
+    </div>
+  );
+}
 
 const TERMS = [
   {
@@ -106,8 +125,9 @@ function SiteHeader() {
 }
 
 function Hero() {
+  const { scheme } = useScheme();
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
-  const totals = schemeTotals(tiersQuery.data ?? SAMPLE_TIERS, SCHEME);
+  const totals = schemeTotals(tiersQuery.data ?? SAMPLE_TIERS, scheme);
 
   return (
     <section className="border-b border-line">
@@ -121,7 +141,7 @@ function Hero() {
           </h1>
           <p className="mt-6 max-w-[46ch] text-[1.0625rem] leading-relaxed text-ink-soft">
             Residential plots at Gidan Daya, near Loyola Jesuit College, FCT Abuja — {totals.plots} plots from 200 to
-            500 sqm at {formatNaira(SCHEME.pricePerSqm)} per sqm, infrastructure inclusive. Choose a 4-bedroom
+            500 sqm at {formatNaira(scheme.pricePerSqm)} per sqm, infrastructure inclusive. Choose a 4-bedroom
             semi-detached or detached duplex and pay in two instalments.
           </p>
 
@@ -137,8 +157,8 @@ function Hero() {
           <ul className="mt-9 max-w-md border-t border-line text-sm">
             {[
               `${totals.plots} plots: 200, 300, 400 and 500 sqm`,
-              `${formatNaira(SCHEME.pricePerSqm)} per sqm, inclusive of infrastructure`,
-              'Applications close 30 December 2026',
+              `${formatNaira(scheme.pricePerSqm)} per sqm, inclusive of infrastructure`,
+              `Applications close ${formatDate(scheme.closesOn)}`,
             ].map((item) => (
               <li key={item} className="flex items-start gap-2.5 border-b border-line py-2.5 text-ink-soft">
                 <svg aria-hidden viewBox="0 0 16 16" className="mt-1 h-3.5 w-3.5 shrink-0 text-forest" fill="none">
@@ -162,11 +182,12 @@ function Hero() {
 }
 
 function PlotPrices() {
+  const { scheme } = useScheme();
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
   const rows = (tiersQuery.data ?? SAMPLE_TIERS).map((tier) => ({
     tier,
-    status: describeTier(tier, SCHEME.closesOn),
-    price: priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm),
+    status: describeTier(tier, scheme.closesOn),
+    price: priceForPlot(tier.sizeSqm, scheme.pricePerSqm),
   }));
 
   return (
@@ -177,8 +198,8 @@ function PlotPrices() {
             <p className="eyebrow">Plot sizes and allocation</p>
             <h2 className="mt-3 text-[1.85rem] sm:text-[2.3rem]">Four sizes, one rate per square metre.</h2>
             <p className="mt-3 text-[0.9375rem] text-ink-soft">
-              {formatNaira(SCHEME.pricePerSqm)} per sqm covers the plot and infrastructure. The deposit is half of the
-              plot price, due 30 January 2027.
+              {formatNaira(scheme.pricePerSqm)} per sqm covers the plot and infrastructure. The deposit is half of the
+              plot price, due {formatDate(scheme.depositDueOn)}.
             </p>
           </div>
           <div className="self-start sm:self-auto">
@@ -264,6 +285,9 @@ function PlotPrices() {
 }
 
 function PaymentPlan() {
+  const { scheme } = useScheme();
+  const steps = paymentSteps(scheme);
+
   return (
     <section id="payment" className="border-b border-line bg-paper-3/55">
       <div className="mx-auto max-w-[1180px] px-5 py-14 lg:py-18">
@@ -273,7 +297,7 @@ function PaymentPlan() {
         </div>
 
         <ol className="mt-10 grid gap-8 sm:grid-cols-3 sm:gap-6">
-          {PAYMENT_STEPS.map((step) => (
+          {steps.map((step) => (
             <li key={step.number} className="border-t border-forest/25 pt-4">
               <span className="num font-display text-[2.1rem] leading-none text-clay">{step.number}</span>
               <h3 className="mt-3 text-[1.15rem]">{step.title}</h3>
@@ -285,17 +309,17 @@ function PaymentPlan() {
         <div className="mt-8 grid gap-3 border-t border-line pt-6 sm:grid-cols-3">
           <p className="text-sm text-ink-soft">
             <span className="block text-[0.625rem] uppercase tracking-[0.09em]">Application fee</span>
-            <span className="num mt-1 block font-display text-lg text-forest">{formatNaira(SCHEME.applicationFee)}</span>
+            <span className="num mt-1 block font-display text-lg text-forest">{formatNaira(scheme.applicationFee)}</span>
             non-refundable
           </p>
           <p className="text-sm text-ink-soft">
             <span className="block text-[0.625rem] uppercase tracking-[0.09em]">50% deposit due</span>
-            <span className="mt-1 block font-display text-lg text-forest">{formatDate(SCHEME.depositDueOn)}</span>
+            <span className="mt-1 block font-display text-lg text-forest">{formatDate(scheme.depositDueOn)}</span>
             by bank transfer only
           </p>
           <p className="text-sm text-ink-soft">
             <span className="block text-[0.625rem] uppercase tracking-[0.09em]">Balance due</span>
-            <span className="mt-1 block font-display text-lg text-forest">{formatDate(SCHEME.balanceDueOn)}</span>
+            <span className="mt-1 block font-display text-lg text-forest">{formatDate(scheme.balanceDueOn)}</span>
             temporary allocation follows full payment
           </p>
         </div>
@@ -305,6 +329,8 @@ function PaymentPlan() {
 }
 
 function SiteVisits() {
+  const { siteVisit } = useScheme();
+
   return (
     <section id="visits" className="border-b border-line">
       <div className="mx-auto grid max-w-[1180px] gap-8 px-5 py-14 lg:grid-cols-[1fr_1fr] lg:gap-14 lg:py-18">
@@ -313,16 +339,16 @@ function SiteVisits() {
           <h2 className="mt-3 text-[1.85rem] sm:text-[2.3rem]">See the land before you commit.</h2>
           <p className="mt-3 max-w-[48ch] text-[0.9375rem] text-ink-soft">
             The cooperative has arranged inspections so subscribers can judge the site for themselves. Buses leave at{' '}
-            {SITE_VISIT.time} on both dates.
+            {siteVisit.time} on both dates.
           </p>
 
           <ul className="mt-6 border-t border-line">
-            {SITE_VISIT.dates.map((date) => (
+            {siteVisit.dates.map((date) => (
               <li key={date} className="flex items-baseline justify-between gap-4 border-b border-line py-3">
                 <span className="font-display text-lg">
                   {new Date(date).toLocaleDateString('en-NG', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
                 </span>
-                <span className="num text-sm text-ink-soft">{SITE_VISIT.time}</span>
+                <span className="num text-sm text-ink-soft">{siteVisit.time}</span>
               </li>
             ))}
           </ul>
@@ -330,7 +356,7 @@ function SiteVisits() {
 
         <div className="card-raised self-start p-5">
           <p className="text-[0.625rem] font-semibold uppercase tracking-[0.11em] text-ink-soft">Meeting point</p>
-          <p className="mt-2 max-w-[40ch] font-display text-[1.2rem] leading-snug">{SITE_VISIT.meetingPoint}</p>
+          <p className="mt-2 max-w-[40ch] font-display text-[1.2rem] leading-snug">{siteVisit.meetingPoint}</p>
           <div className="mt-4 flex gap-2 border-t border-line pt-4 text-xs text-ink-soft">
             <svg aria-hidden viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-forest" fill="none">
               <path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" strokeWidth="1.5" />
@@ -373,12 +399,14 @@ function Terms() {
 }
 
 function ClosingCta() {
+  const { scheme } = useScheme();
+
   return (
     <section className="bg-forest text-paper">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-5 py-14 sm:flex-row sm:items-end sm:justify-between lg:py-16">
         <div className="max-w-xl">
           <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-gold">
-            Applications close {formatDate(SCHEME.closesOn)}
+            Applications close {formatDate(scheme.closesOn)}
           </p>
           <h2 className="mt-3 text-[1.9rem] leading-tight text-paper sm:text-[2.4rem]">
             Choose a size, then secure your position.
@@ -482,6 +510,7 @@ export function Landing() {
       </a>
       <SiteHeader />
       <main id="main">
+        <NoticeBar />
         <Hero />
         <PlotPrices />
         <PaymentPlan />

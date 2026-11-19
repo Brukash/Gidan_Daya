@@ -21,7 +21,7 @@ import {
   recordPayment,
   reviewEvidence,
 } from '../data/repository';
-import { SCHEME } from '../data/seed';
+import { useScheme } from '../data/scheme';
 import { TERMS_CLAUSES } from '../data/terms';
 import type {
   Application as ApplicationRecord,
@@ -100,6 +100,7 @@ function StatusTrack({ status }: { status: ApplicationStatus }) {
 }
 
 function PaymentSchedule({ application }: { application: ApplicationRecord }) {
+  const { scheme } = useScheme();
   const deposit = depositFor(application.amount);
   const paidToDeposit = Math.min(application.paid, deposit);
   const paidToBalance = Math.max(0, application.paid - deposit);
@@ -108,20 +109,20 @@ function PaymentSchedule({ application }: { application: ApplicationRecord }) {
     {
       label: 'Application fee',
       due: 'On application',
-      amount: SCHEME.applicationFee,
-      paid: application.feePaid ? SCHEME.applicationFee : 0,
+      amount: scheme.applicationFee,
+      paid: application.feePaid ? scheme.applicationFee : 0,
       note: 'Non-refundable',
     },
     {
       label: '50% deposit',
-      due: formatDate(SCHEME.depositDueOn),
+      due: formatDate(scheme.depositDueOn),
       amount: deposit,
       paid: paidToDeposit,
       note: 'Secures your position',
     },
     {
       label: 'Balance',
-      due: formatDate(SCHEME.balanceDueOn),
+      due: formatDate(scheme.balanceDueOn),
       amount: application.amount - deposit,
       paid: paidToBalance,
       note: 'Temporary allocation after this',
@@ -209,6 +210,7 @@ function PaymentSchedule({ application }: { application: ApplicationRecord }) {
 }
 
 function EvidenceUpload({ application }: { application: ApplicationRecord }) {
+  const { scheme } = useScheme();
   const { user } = useSession();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -216,7 +218,9 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
   const outstanding = outstandingFor(application);
   const defaultKind: PaymentKind = application.paid === 0 ? 'deposit' : 'balance';
   const [kind, setKind] = useState<PaymentKind>(defaultKind);
-  const [amount, setAmount] = useState<string>(String(instalmentGap(application, defaultKind)));
+  const [amount, setAmount] = useState<string>(
+    String(instalmentGap(application, defaultKind, scheme.applicationFee)),
+  );
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fileKey, setFileKey] = useState(0);
@@ -285,7 +289,7 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
             onChange={(event) => {
               const nextKind = event.target.value as PaymentKind;
               setKind(nextKind);
-              setAmount(String(instalmentGap(application, nextKind)));
+              setAmount(String(instalmentGap(application, nextKind, scheme.applicationFee)));
             }}
           >
             <option value="deposit">50% deposit</option>
@@ -333,8 +337,8 @@ function EvidenceUpload({ application }: { application: ApplicationRecord }) {
   );
 }
 
-function instalmentGap(application: ApplicationRecord, kind: PaymentKind): number {
-  if (kind === 'application-fee') return application.feePaid ? 0 : SCHEME.applicationFee;
+function instalmentGap(application: ApplicationRecord, kind: PaymentKind, applicationFee: number): number {
+  if (kind === 'application-fee') return application.feePaid ? 0 : applicationFee;
   if (kind === 'deposit') return Math.max(0, depositFor(application.amount) - application.paid);
   return Math.max(0, application.amount - Math.max(depositFor(application.amount), application.paid));
 }
@@ -522,6 +526,7 @@ function EvidenceList({
 }
 
 export function Application() {
+  const { scheme } = useScheme();
   const { user } = useSession();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -575,7 +580,7 @@ export function Application() {
         <PageHeader eyebrow="Gidan Daya" title="My application" />
         <EmptyState
           title="No application yet"
-          body={`Applications close ${formatDate(SCHEME.closesOn)}. Choose a plot size and accept the conditions to start.`}
+          body={`Applications close ${formatDate(scheme.closesOn)}. Choose a plot size and accept the conditions to start.`}
           action={
             <Link to="/apply" className="btn btn-primary">
               Start subscription
@@ -606,7 +611,7 @@ export function Application() {
             <Button
               variant="ghost"
               onClick={() => {
-                void exportApplicationPdf(currentApplication).catch((error: Error) =>
+                void exportApplicationPdf(currentApplication, scheme).catch((error: Error) =>
                   toast({ title: 'Could not build the statement', detail: error.message }),
                 );
               }}
@@ -782,7 +787,7 @@ export function Application() {
         <div className="border-b border-line px-4 py-3">
           <h2 className="text-[1.05rem]">Payment schedule</h2>
           <p className="text-xs text-ink-soft">
-            Figures are the published rate of {formatNaira(SCHEME.pricePerSqm)} per sqm, infrastructure inclusive.
+            Figures are the published rate of {formatNaira(scheme.pricePerSqm)} per sqm, infrastructure inclusive.
           </p>
         </div>
         <PaymentSchedule application={currentApplication} />

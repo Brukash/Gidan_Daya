@@ -150,6 +150,8 @@ These are unresolved in the document itself. The app must not silently pick a si
 | Coop project loan funding | — | **Not modelled** |
 | Building completion to 100% for the permanent letter | — | **Not modelled** (no construction milestones) |
 
+**Editable from the portal since 2026-11-19:** the rate, the fee, the four dates, the site visits, the notice and the plot totals are published by the secretariat at `/app/content`. The values in this file and in `src/data/seed.ts` are the issued record; once the secretariat edits them, the live figures come from the `scheme` row (or browser storage in sample mode), and the seed tests still assert the issued figures so the starting point cannot drift.
+
 **Deliberate additions that are not in the document** (ours, and labelled as such): sample availability counts; the demo applicants; the secretariat's evidence-verification workflow and audit trail; the three-option allocation setting; the five-cadre list; a 5 MB upload limit and accepted file types.
 
 **Known gap in the acceptance step:** the call's four blanket confirmations in §10 are not captured as separate acknowledgements — only the four money conditions are. If the cooperative wants §10 recorded verbatim, it becomes a fifth clause and a bump to `TERMS_VERSION`.

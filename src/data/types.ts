@@ -34,6 +34,21 @@ export interface Scheme {
   closesOn: string;
   depositDueOn: string;
   balanceDueOn: string;
+  /** One line the secretariat publishes above the pages; an empty string hides it. */
+  notice: string;
+}
+
+/** The inspection dates, published from the same place as the scheme figures. */
+export interface SiteVisit {
+  dates: string[];
+  time: string;
+  meetingPoint: string;
+}
+
+/** Everything the secretariat publishes: the scheme's figures and the site visits. */
+export interface SchemeContent {
+  scheme: Scheme;
+  siteVisit: SiteVisit;
 }
 
 export interface SchemeSettings {

@@ -3,9 +3,9 @@
  * created. Each clause is acknowledged separately and the accepted ids are
  * stored on the application, so the record shows exactly what was agreed.
  */
-export const TERMS_VERSION = 'Gidan Daya acceptance v1';
+export const TERMS_VERSION = 'Gidan Daya acceptance v2';
 
-export const TERMS_EFFECTIVE_ON = '2026-11-03';
+export const TERMS_EFFECTIVE_ON = '2026-11-19';
 
 export interface TermsClause {
   id: 'refunds' | 'default' | 'variation' | 'title';
@@ -36,7 +36,7 @@ export const TERMS_CLAUSES: TermsClause[] = [
     id: 'variation',
     title: 'Plot size after survey',
     headline: 'The surveyed size decides what you pay, up or down.',
-    body: 'Plot sizes are subject to the size allocated after survey. Where the surveyed plot is larger, the additional square metres are payable by the subscriber at the published rate of ₦27,000 per sqm. Where it is smaller, the excess already paid is refunded unconditionally.',
+    body: 'Plot sizes are subject to the size allocated after survey. Where the surveyed plot is larger, the additional square metres are payable by the subscriber at the published rate per square metre shown on the scheme page. Where it is smaller, the excess already paid is refunded unconditionally.',
     source: 'Call for indication of interest — plot size and variation',
   },
   {

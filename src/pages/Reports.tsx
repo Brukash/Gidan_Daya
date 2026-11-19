@@ -14,7 +14,7 @@ import {
   useToast,
 } from '../components/ui';
 import { getSettings, listApplications, listMembers, listTiers } from '../data/repository';
-import { SCHEME } from '../data/seed';
+import { useScheme } from '../data/scheme';
 import {
   STATUS_LABEL,
   allocationOrder,
@@ -31,6 +31,7 @@ import { formatCompactNaira, formatDate, formatNaira, formatSqm, plural } from '
 export function Reports() {
   const { user } = useSession();
   const toast = useToast();
+  const { scheme } = useScheme();
   const [busy, setBusy] = useState<'pdf' | 'xlsx' | null>(null);
 
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers });
@@ -42,14 +43,14 @@ export function Reports() {
   const apps = appsQuery.data ?? [];
   const members = membersQuery.data ?? [];
 
-  const totals = schemeTotals(tiers, SCHEME);
+  const totals = schemeTotals(tiers, scheme);
   const policy = describePolicy(settingsQuery.data?.allocationPolicy ?? 'cadre-priority-same-day');
   const queue = allocationOrder(apps, policy.id);
   const confirmedQueue = queue.filter((item) => item.confirmedOn !== null);
   const committed = sumBy(apps, (item) => item.amount);
   const collected = sumBy(apps, (item) => item.paid);
   const outstanding = Math.max(0, committed - collected);
-  const fees = apps.filter((item) => item.feePaid).length * SCHEME.applicationFee;
+  const fees = apps.filter((item) => item.feePaid).length * scheme.applicationFee;
   const priorityCount = apps.filter((item) => hasPriority(item.cadre)).length;
 
   const loading = tiersQuery.isLoading || appsQuery.isLoading;
@@ -57,7 +58,7 @@ export function Reports() {
   const onRegister = async () => {
     setBusy('pdf');
     try {
-      await exportRegisterPdf(apps, tiers);
+      await exportRegisterPdf(apps, tiers, scheme);
       toast({ title: 'Register downloaded', detail: `${apps.length} ${plural(apps.length, 'application')} in the PDF.` });
     } catch (cause) {
       toast({ title: 'Could not build the PDF', detail: cause instanceof Error ? cause.message : 'Unknown error' });
@@ -69,7 +70,7 @@ export function Reports() {
   const onWorkbook = async () => {
     setBusy('xlsx');
     try {
-      await exportAllocationXlsx(tiers, apps, members);
+      await exportAllocationXlsx(tiers, apps, members, scheme);
       toast({ title: 'Workbook downloaded', detail: 'Three sheets: plot availability, applications, applicants.' });
     } catch (cause) {
       toast({ title: 'Could not build the workbook', detail: cause instanceof Error ? cause.message : 'Unknown error' });
@@ -100,7 +101,7 @@ export function Reports() {
       <PageHeader
         eyebrow="Gidan Daya"
         title="Allocation report"
-        description={`${totals.plots} plots · ${formatNaira(SCHEME.pricePerSqm)} per sqm · ${totals.squareMetres.toLocaleString('en-NG')} sqm at ${formatCompactNaira(totals.value)}. Totals are derived, not typed in.`}
+        description={`${totals.plots} plots · ${formatNaira(scheme.pricePerSqm)} per sqm · ${totals.squareMetres.toLocaleString('en-NG')} sqm at ${formatCompactNaira(totals.value)}. Totals are derived, not typed in.`}
         actions={
           <>
             <Button variant="ghost" onClick={() => void onRegister()} disabled={busy !== null || apps.length === 0}>
@@ -131,7 +132,7 @@ export function Reports() {
             <Kpi
               label="Outstanding"
               value={formatCompactNaira(outstanding)}
-              context={`Balance falls due ${formatDate(SCHEME.balanceDueOn)}`}
+              context={`Balance falls due ${formatDate(scheme.balanceDueOn)}`}
             />
           </section>
 
@@ -175,7 +176,7 @@ export function Reports() {
                           </span>
                         </td>
                         <td className="num">{own.length}</td>
-                        <td className="num whitespace-nowrap">{formatNaira(tier.sizeSqm * SCHEME.pricePerSqm)}</td>
+                        <td className="num whitespace-nowrap">{formatNaira(tier.sizeSqm * scheme.pricePerSqm)}</td>
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.amount))}</td>
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.paid))}</td>
                         <td>

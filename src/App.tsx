@@ -4,9 +4,11 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'rea
 import { SessionProvider, useSession } from './auth/session';
 import { AppShell } from './components/AppShell';
 import { LoadingBlock, ToastProvider } from './components/ui';
+import { SchemeProvider } from './data/scheme';
 import { Application } from './pages/Application';
 import { ApplicationReceived } from './pages/ApplicationReceived';
 import { Apply } from './pages/Apply';
+import { Content } from './pages/Content';
 import { Landing } from './pages/Landing';
 import { Members } from './pages/Members';
 import { NotFound } from './pages/NotFound';
@@ -55,8 +57,9 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionProvider>
-        <ToastProvider>
+      <SchemeProvider>
+        <SessionProvider>
+          <ToastProvider>
           <BrowserRouter>
             <ScrollToTop />
             <Routes>
@@ -72,14 +75,16 @@ export default function App() {
                   <Route path="application" element={<Application />} />
                   <Route path="members" element={<Members />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="content" element={<Content />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </ToastProvider>
-      </SessionProvider>
+          </ToastProvider>
+        </SessionProvider>
+      </SchemeProvider>
     </QueryClientProvider>
   );
 }

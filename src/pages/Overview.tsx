@@ -12,7 +12,7 @@ import {
   TierPill,
 } from '../components/ui';
 import { getSettings, listApplications, listTiers } from '../data/repository';
-import { SCHEME, SITE_VISIT } from '../data/seed';
+import { useScheme } from '../data/scheme';
 import {
   allocationPercent,
   describePolicy,
@@ -30,6 +30,7 @@ import { daysUntil, formatCompactNaira, formatDate, formatNaira, formatSqm, plur
 
 export function Overview() {
   const { user } = useSession();
+  const { scheme, siteVisit } = useScheme();
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers });
   const mineQuery = useQuery({
     queryKey: ['applications', user?.id ?? 'anonymous'],
@@ -47,7 +48,7 @@ export function Overview() {
   const tiers = tiersQuery.data ?? [];
   const mine = mineQuery.data ?? [];
   const all = allQuery.data ?? [];
-  const totals = schemeTotals(tiers, SCHEME);
+  const totals = schemeTotals(tiers, scheme);
 
   const latest = mine[0];
   const policy = describePolicy(settingsQuery.data?.allocationPolicy ?? 'cadre-priority-same-day');
@@ -56,9 +57,9 @@ export function Overview() {
   const committed = sumBy(all, (item) => item.amount);
 
   const milestones = [
-    { label: 'Applications close', date: SCHEME.closesOn, note: 'No applications after this date' },
-    { label: '50% deposit due', date: SCHEME.depositDueOn, note: 'Half of the plot price' },
-    { label: 'Balance due', date: SCHEME.balanceDueOn, note: 'Temporary allocation after this' },
+    { label: 'Applications close', date: scheme.closesOn, note: 'No applications after this date' },
+    { label: '50% deposit due', date: scheme.depositDueOn, note: 'Half of the plot price' },
+    { label: 'Balance due', date: scheme.balanceDueOn, note: 'Temporary allocation after this' },
   ];
 
   return (
@@ -66,7 +67,7 @@ export function Overview() {
       <PageHeader
         eyebrow="Gidan Daya · CBN Staff Cooperative Estate"
         title={`Good to see you, ${user?.name.split(' ')[0] ?? 'member'}.`}
-        description={`Plots from 200 to 500 sqm at ${formatNaira(SCHEME.pricePerSqm)} per sqm. Applications close ${formatDate(SCHEME.closesOn)}.`}
+        description={`Plots from 200 to 500 sqm at ${formatNaira(scheme.pricePerSqm)} per sqm. Applications close ${formatDate(scheme.closesOn)}.`}
         actions={
           <Link to="/apply" className="btn btn-primary">
             Start subscription
@@ -88,11 +89,11 @@ export function Overview() {
         <Kpi
           label="Your application"
           value={latest ? formatSqm(latest.sizeSqm) : 'None yet'}
-          context={latest ? latest.reference : 'Start one before 30 Dec 2026'}
+          context={latest ? latest.reference : `Start one before ${formatDate(scheme.closesOn)}`}
         />
         <Kpi
           label="Next milestone"
-          value={latest ? formatCompactNaira(outstandingFor(latest)) : formatCompactNaira(20_000)}
+          value={latest ? formatCompactNaira(outstandingFor(latest)) : formatCompactNaira(scheme.applicationFee)}
           context={latest ? milestoneLabel(latest) : 'Application fee'}
         />
       </section>
@@ -126,7 +127,7 @@ export function Overview() {
               </thead>
               <tbody>
                 {tiers.map((tier) => {
-                  const status = describeTier(tier, SCHEME.closesOn);
+                  const status = describeTier(tier, scheme.closesOn);
                   return (
                     <tr key={tier.id}>
                       <td>
@@ -141,7 +142,7 @@ export function Overview() {
                         </Link>
                       </td>
                       <td className="num whitespace-nowrap">
-                        {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))}
+                        {formatNaira(priceForPlot(tier.sizeSqm, scheme.pricePerSqm))}
                       </td>
                       <td className="min-w-[9rem]">
                         <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
@@ -161,7 +162,7 @@ export function Overview() {
 
           <ul className="divide-y divide-line sm:hidden">
             {tiers.map((tier) => {
-              const status = describeTier(tier, SCHEME.closesOn);
+              const status = describeTier(tier, scheme.closesOn);
               return (
                 <li key={tier.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
@@ -179,7 +180,7 @@ export function Overview() {
                   <div className="mt-2">
                     <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                     <p className="num mt-1 text-xs text-ink-soft">
-                      {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))} per plot
+                      {formatNaira(priceForPlot(tier.sizeSqm, scheme.pricePerSqm))} per plot
                     </p>
                   </div>
                 </li>
@@ -232,8 +233,8 @@ export function Overview() {
             ) : (
               <div className="mt-3">
                 <p className="text-sm text-ink-soft">
-                  No application on record for your membership number yet. Choose a plot size and pay the ₦20,000 fee
-                  to start.
+                  No application on record for your membership number yet. Choose a plot size and pay the{' '}
+                  {formatNaira(scheme.applicationFee)} fee to start.
                 </p>
                 <Link to="/apply" className="btn btn-forest mt-3 w-full text-sm">
                   Start subscription
@@ -266,7 +267,9 @@ export function Overview() {
               })}
             </ul>
             <p className="mt-3 border-t border-line pt-3 text-xs text-ink-soft">
-              Site visits {formatDate(SITE_VISIT.dates[0])} and {formatDate(SITE_VISIT.dates[1])} at {SITE_VISIT.time}.
+              {siteVisit.dates.length > 0
+                ? `Site visits ${siteVisit.dates.map((date) => formatDate(date)).join(', ')} at ${siteVisit.time}.`
+                : 'No site visits are scheduled.'}
             </p>
           </section>
         </div>

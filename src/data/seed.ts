@@ -6,7 +6,9 @@ import type {
   PaymentEvidence,
   PlotTier,
   Scheme,
+  SchemeContent,
   SchemeSettings,
+  SiteVisit,
 } from './types';
 import { TERMS_CLAUSES, TERMS_VERSION } from './terms';
 
@@ -25,14 +27,21 @@ export const SCHEME: Scheme = {
   closesOn: '2026-12-30',
   depositDueOn: '2027-01-30',
   balanceDueOn: '2027-06-30',
+  notice: '',
 };
 
-export const SITE_VISIT = {
+export const SITE_VISIT: SiteVisit = {
   time: '10:00 am',
   meetingPoint:
     'The National Ecumenical Centre, opposite CBN Head Office back entrance, CBD, FCT Abuja',
   dates: ['2026-11-28', '2026-12-05'],
-} as const;
+};
+
+/**
+ * The published content as the cooperative issued it. The secretariat edits a
+ * copy of this through the admin portal; nothing below is rewritten in place.
+ */
+export const DEFAULT_CONTENT: SchemeContent = { scheme: SCHEME, siteVisit: SITE_VISIT };
 
 /**
  * Default reading of the allocation rule: payment date decides, and within the

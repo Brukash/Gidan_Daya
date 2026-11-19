@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { BrandBar } from '../components/BrandBar';
 import { ApplicationPill, Button, Field } from '../components/ui';
 import { getApplicationByReference } from '../data/repository';
-import { SCHEME } from '../data/seed';
+import { useScheme } from '../data/scheme';
 import type { Application } from '../data/types';
 import { depositFor, outstandingFor } from '../lib/allocations';
 import { formatDate, formatNaira, formatSqm } from '../lib/format';
@@ -16,6 +16,7 @@ interface ReceiptState {
 export function ApplicationReceived() {
   const { reference = '' } = useParams();
   const location = useLocation();
+  const { scheme } = useScheme();
   const preselected = (location.state as ReceiptState | null)?.application;
 
   const [application, setApplication] = useState<Application | null>(
@@ -107,7 +108,7 @@ export function ApplicationReceived() {
                 <div>
                   <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Application fee</dt>
                   <dd className="num mt-0.5 text-sm font-medium">
-                    {formatNaira(SCHEME.applicationFee)} · non-refundable
+                    {formatNaira(scheme.applicationFee)} · non-refundable
                   </dd>
                 </div>
               </dl>
@@ -118,14 +119,14 @@ export function ApplicationReceived() {
                   <div className="flex items-baseline justify-between gap-3 py-2.5">
                     <dt>
                       50% deposit
-                      <span className="block text-xs text-ink-soft">due {formatDate(SCHEME.depositDueOn)}</span>
+                      <span className="block text-xs text-ink-soft">due {formatDate(scheme.depositDueOn)}</span>
                     </dt>
                     <dd className="num shrink-0 font-medium">{formatNaira(depositFor(application.amount))}</dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-3 py-2.5">
                     <dt>
                       Balance
-                      <span className="block text-xs text-ink-soft">due {formatDate(SCHEME.balanceDueOn)}</span>
+                      <span className="block text-xs text-ink-soft">due {formatDate(scheme.balanceDueOn)}</span>
                     </dt>
                     <dd className="num shrink-0 font-medium">
                       {formatNaira(application.amount - depositFor(application.amount))}
@@ -143,7 +144,7 @@ export function ApplicationReceived() {
               <h2 className="text-[1.05rem]">Next steps</h2>
               <ol className="mt-2 space-y-1.5 text-sm text-ink-soft">
                 <li>
-                  1. Pay the {formatNaira(SCHEME.applicationFee)} fee and the 50% deposit by transfer to the
+                  1. Pay the {formatNaira(scheme.applicationFee)} fee and the 50% deposit by transfer to the
                   cooperative's UBA project account, quoting{' '}
                   <span className="num">{application.memberNumber}</span> and your name.
                 </li>

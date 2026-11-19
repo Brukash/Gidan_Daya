@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useSession } from '../auth/session';
-import { SCHEME } from '../data/seed';
+import { useScheme } from '../data/scheme';
+import { formatDate, formatNaira } from '../lib/format';
 import { dataMode } from '../lib/supabase';
 import { DataModeBadge } from './ui';
 
-type IconName = 'grid' | 'plots' | 'plus' | 'receipt' | 'users' | 'chart' | 'settings';
+type IconName = 'grid' | 'plots' | 'plus' | 'receipt' | 'users' | 'chart' | 'edit' | 'settings';
 
 interface NavItem {
   to: string;
@@ -22,6 +23,7 @@ const NAV: NavItem[] = [
   { to: '/app/application', label: 'My application', end: false, icon: 'receipt' },
   { to: '/app/members', label: 'Applicants', end: false, icon: 'users', adminOnly: true },
   { to: '/app/reports', label: 'Reports', end: false, icon: 'chart', adminOnly: true },
+  { to: '/app/content', label: 'Published content', end: false, icon: 'edit', adminOnly: true },
   { to: '/app/settings', label: 'Scheme settings', end: false, icon: 'settings', adminOnly: true },
 ];
 
@@ -33,6 +35,7 @@ function Icon({ name }: { name: IconName }) {
     receipt: 'M6 3.5h12v17l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',
     users: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 19c.6-3 2.8-4.5 5.5-4.5S13 16 13.5 19M17 11.5a2.5 2.5 0 1 0 0-5M15.5 14.8c2.4.3 4 1.8 4.5 4.2',
     chart: 'M4 19V5M4 19h16M8 15v-4M12.5 15V8M17 15v-6',
+    edit: 'M4 16.5V20h3.5L19 8.5 15.5 5 4 16.5zM13.5 7 17 10.5',
     settings: 'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.66 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.06a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
   };
 
@@ -45,6 +48,7 @@ function Icon({ name }: { name: IconName }) {
 
 function Rail({ onNavigate }: { onNavigate?: () => void }) {
   const { user, signOut } = useSession();
+  const { scheme } = useScheme();
   const items = NAV.filter((item) => !item.adminOnly || user?.role === 'admin');
 
   return (
@@ -75,7 +79,7 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="mt-auto border-t border-paper/15 pt-4">
         <p className="px-1 text-[0.6875rem] uppercase tracking-[0.12em] text-paper/50">
-          Closes {new Date(SCHEME.closesOn).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}
+          Closes {formatDate(scheme.closesOn)}
         </p>
         {user ? (
           <>
@@ -100,6 +104,7 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
 export function AppShell() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const { scheme } = useScheme();
 
   useEffect(() => {
     if (!open) return;
@@ -149,7 +154,7 @@ export function AppShell() {
                 <img src="/brand/coop-seal-64.png" alt="" width={24} height={24} className="h-6 w-6" />
               </div>
               <p className="hidden text-sm text-ink-soft lg:block">
-                Applications close 30 Dec 2026 · ₦27,000 per sqm
+                Applications close {formatDate(scheme.closesOn)} · {formatNaira(scheme.pricePerSqm)} per sqm
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -157,6 +162,12 @@ export function AppShell() {
             </div>
           </div>
         </header>
+
+        {scheme.notice ? (
+          <div className="border-b border-gold/30 bg-gold-tint/70 px-4 py-2 text-sm text-[#6f4d12] sm:px-6">
+            {scheme.notice}
+          </div>
+        ) : null}
 
         <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-9 lg:py-8">
           <Outlet />

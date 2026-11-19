@@ -1,5 +1,4 @@
-import type { Application, Member, PlotTier } from '../data/types';
-import { SCHEME } from '../data/seed';
+import type { Application, Member, PlotTier, Scheme } from '../data/types';
 import {
   allocationPercent,
   depositFor,
@@ -67,7 +66,7 @@ function pdfFooter(doc: import('jspdf').jsPDF, note: string): void {
   }
 }
 
-export async function exportApplicationPdf(application: Application): Promise<void> {
+export async function exportApplicationPdf(application: Application, scheme: Scheme): Promise<void> {
   const { jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');
 
@@ -85,9 +84,9 @@ export async function exportApplicationPdf(application: Application): Promise<vo
       ['Reference', application.reference],
       ['Plot size', formatSqm(application.sizeSqm)],
       ['House design', application.houseDesign === 'detached' ? '4-bedroom detached duplex' : '4-bedroom semi-detached duplex'],
-      ['Rate', `${formatNaira(SCHEME.pricePerSqm)} per sqm, infrastructure inclusive`],
+      ['Rate', `${formatNaira(scheme.pricePerSqm)} per sqm, infrastructure inclusive`],
       ['Plot price', formatNaira(application.amount)],
-      ['Application fee', `${formatNaira(SCHEME.applicationFee)} non-refundable — paid`],
+      ['Application fee', `${formatNaira(scheme.applicationFee)} non-refundable — paid`],
       ['Cadre', application.cadre],
       ['Status', STATUS_LABEL[application.status]],
     ],
@@ -106,18 +105,18 @@ export async function exportApplicationPdf(application: Application): Promise<vo
       [
         'Application fee',
         'On application',
-        formatNaira(SCHEME.applicationFee),
+        formatNaira(scheme.applicationFee),
         application.feePaid ? 'Paid' : 'Outstanding',
       ],
       [
         '50% deposit',
-        formatDate(SCHEME.depositDueOn),
+        formatDate(scheme.depositDueOn),
         formatNaira(depositFor(application.amount)),
         formatNaira(Math.min(application.paid, depositFor(application.amount))),
       ],
       [
         'Balance',
-        formatDate(SCHEME.balanceDueOn),
+        formatDate(scheme.balanceDueOn),
         formatNaira(application.amount - depositFor(application.amount)),
         formatNaira(Math.max(0, application.paid - depositFor(application.amount))),
       ],
@@ -156,7 +155,11 @@ export async function exportApplicationPdf(application: Application): Promise<vo
   doc.save(`gidan-daya-application-${application.reference}.pdf`);
 }
 
-export async function exportRegisterPdf(applications: Application[], tiers: PlotTier[]): Promise<void> {
+export async function exportRegisterPdf(
+  applications: Application[],
+  tiers: PlotTier[],
+  scheme: Scheme,
+): Promise<void> {
   const { jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');
 
@@ -182,7 +185,7 @@ export async function exportRegisterPdf(applications: Application[], tiers: Plot
     startY: 82,
     head: [['Plot size', 'Plots', 'Allocated', 'Remaining', 'Price', '50% deposit']],
     body: tiers.map((tier) => {
-      const price = tier.sizeSqm * SCHEME.pricePerSqm;
+      const price = tier.sizeSqm * scheme.pricePerSqm;
       return [
         formatSqm(tier.sizeSqm),
         tier.totalPlots,
@@ -240,6 +243,7 @@ export async function exportAllocationXlsx(
   tiers: PlotTier[],
   applications: Application[],
   members: Member[],
+  scheme: Scheme,
 ): Promise<void> {
   const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
@@ -259,7 +263,7 @@ export async function exportAllocationXlsx(
     { header: '50% deposit (NGN)', key: 'deposit', width: 18, style: { numFmt: '#,##0' } },
   ];
   for (const tier of tiers) {
-    const price = tier.sizeSqm * SCHEME.pricePerSqm;
+    const price = tier.sizeSqm * scheme.pricePerSqm;
     tierSheet.addRow({
       size: tier.sizeSqm,
       total: tier.totalPlots,

@@ -14,7 +14,7 @@ import {
   useToast,
 } from '../components/ui';
 import { createApplication, getSettings, listTiers } from '../data/repository';
-import { SCHEME } from '../data/seed';
+import { useScheme } from '../data/scheme';
 import { TERMS_CLAUSES, TERMS_EFFECTIVE_ON, TERMS_VERSION } from '../data/terms';
 import type { Cadre, HouseDesign, MemberCategory } from '../data/types';
 import { depositFor, describePolicy, priceForPlot, remainingPlots } from '../lib/allocations';
@@ -34,6 +34,7 @@ export function Apply() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
+  const { scheme } = useScheme();
 
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers });
   const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: getSettings });
@@ -76,7 +77,7 @@ export function Apply() {
 
   if (tiersQuery.isLoading) return <LoadingBlock label="Reading plot availability…" />;
 
-  const amount = selected ? priceForPlot(selected.sizeSqm, SCHEME.pricePerSqm) : 0;
+  const amount = selected ? priceForPlot(selected.sizeSqm, scheme.pricePerSqm) : 0;
 
   const continueToTerms = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -168,7 +169,7 @@ export function Apply() {
           <PageHeader
             eyebrow="Gidan Daya"
             title="Start your subscription"
-            description={`One application covers one plot. The ${formatNaira(SCHEME.applicationFee)} application fee is non-refundable; the 50% deposit is due ${formatDate(SCHEME.depositDueOn)}.`}
+            description={`One application covers one plot. The ${formatNaira(scheme.applicationFee)} application fee is non-refundable; the 50% deposit is due ${formatDate(scheme.depositDueOn)}.`}
             actions={
               <ol className="flex items-center gap-2 text-xs" aria-label="Application steps">
                 {[
@@ -253,9 +254,9 @@ export function Apply() {
                             />
                           </span>
                           <span className="num shrink-0 text-right text-sm">
-                            {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))}
+                            {formatNaira(priceForPlot(tier.sizeSqm, scheme.pricePerSqm))}
                             <span className="block text-[0.625rem] text-ink-soft">
-                              deposit {formatNaira(depositFor(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm)))}
+                              deposit {formatNaira(depositFor(priceForPlot(tier.sizeSqm, scheme.pricePerSqm)))}
                             </span>
                           </span>
                         </label>
@@ -428,7 +429,7 @@ export function Apply() {
                         </span>
                       </div>
                       <p className="num mt-1 text-xs text-ink-soft">
-                        {formatNaira(SCHEME.pricePerSqm)}/sqm × {selected.sizeSqm} sqm
+                        {formatNaira(scheme.pricePerSqm)}/sqm × {selected.sizeSqm} sqm
                       </p>
 
                       <div className="mt-3">
@@ -441,7 +442,7 @@ export function Apply() {
                       <dl className="mt-4 divide-y divide-line border-t border-line text-sm">
                         <div className="flex items-baseline justify-between gap-3 py-2">
                           <dt className="text-ink-soft">Application fee</dt>
-                          <dd className="num">{formatNaira(SCHEME.applicationFee)}</dd>
+                          <dd className="num">{formatNaira(scheme.applicationFee)}</dd>
                         </div>
                         <div className="flex items-baseline justify-between gap-3 py-2">
                           <dt className="text-ink-soft">50% deposit</dt>
@@ -475,7 +476,7 @@ export function Apply() {
                   Continue to the conditions
                 </button>
                 <p className="text-center text-xs text-ink-soft">
-                  Applications close {formatDate(SCHEME.closesOn)}.
+                  Applications close {formatDate(scheme.closesOn)}.
                 </p>
               </aside>
             </form>
@@ -558,12 +559,12 @@ export function Apply() {
                   <ol className="mt-2 space-y-1.5 text-sm text-ink-soft">
                     <li>1. Your application is created with a reference, shown on the next screen.</li>
                     <li>
-                      2. Pay the {formatNaira(SCHEME.applicationFee)} fee and the 50% deposit by{' '}
-                      {formatDate(SCHEME.depositDueOn)}, quoting your ID number and name.
+                      2. Pay the {formatNaira(scheme.applicationFee)} fee and the 50% deposit by{' '}
+                      {formatDate(scheme.depositDueOn)}, quoting your ID number and name.
                     </li>
                     <li>3. The secretariat verifies the payment, records its date and fixes your queue position.</li>
                     <li>
-                      4. Clear the balance by {formatDate(SCHEME.balanceDueOn)}. Sign in at any time to attach
+                      4. Clear the balance by {formatDate(scheme.balanceDueOn)}. Sign in at any time to attach
                       evidence and follow the balance.
                     </li>
                   </ol>

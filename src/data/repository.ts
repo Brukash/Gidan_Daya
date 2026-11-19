@@ -10,11 +10,14 @@ import type {
   PaymentKind,
   PlotTier,
   ReviewDecision,
+  Scheme,
+  SchemeContent,
   SchemeSettings,
 } from './types';
 import { supabase } from '../lib/supabase';
 import { depositFor, priceForPlot } from '../lib/allocations';
 import {
+  DEFAULT_CONTENT,
   DEFAULT_SETTINGS,
   SCHEME,
   SAMPLE_APPLICATIONS,
@@ -22,6 +25,7 @@ import {
   SAMPLE_EVIDENCE,
   SAMPLE_MEMBERS,
   SAMPLE_TIERS,
+  SITE_VISIT,
 } from './seed';
 import { TERMS_CLAUSES, TERMS_VERSION } from './terms';
 
@@ -30,6 +34,8 @@ const KEYS = {
   settings: 'gidan-daya:settings',
   evidence: 'gidan-daya:evidence',
   audit: 'gidan-daya:audit',
+  content: 'gidan-daya:scheme-content',
+  tierTotals: 'gidan-daya:tier-totals',
 } as const;
 
 function readLocal<T>(key: string, fallback: T): T {
@@ -188,8 +194,19 @@ function applyLocalAllocations(tiers: PlotTier[]): PlotTier[] {
   });
 }
 
+function sampleTiers(): PlotTier[] {
+  const saved = readLocal<Record<string, number>>(KEYS.tierTotals, {});
+  const base = SAMPLE_TIERS.map((tier) => {
+    const total = saved[tier.id];
+    return typeof total === 'number'
+      ? { ...tier, totalPlots: Math.max(tier.allocated, total) }
+      : tier;
+  });
+  return applyLocalAllocations(base);
+}
+
 export async function listTiers(): Promise<PlotTier[]> {
-  if (!supabase) return applyLocalAllocations(SAMPLE_TIERS);
+  if (!supabase) return sampleTiers();
 
   const { data, error } = await supabase.from('plot_tiers').select('*').order('size_sqm');
   if (error) throw new Error(error.message);
@@ -321,7 +338,6 @@ export interface NewApplication {
 
 /** Creates an application. The amount always comes from the published rate per sqm. */
 export async function createApplication(input: NewApplication): Promise<Application> {
-  const amount = priceForPlot(input.sizeSqm, SCHEME.pricePerSqm);
   const acceptedAt = new Date().toISOString();
 
   if (supabase) {
@@ -361,6 +377,11 @@ export async function createApplication(input: NewApplication): Promise<Applicat
   // The reference continues the plot numbering, so a new application cannot
   // reuse a number already used on that tier.
   const sequence = Math.max(highestUsed, tier?.allocated ?? 0) + 1;
+
+  // Sample mode prices the plot here; the Supabase branch prices it in the RPC,
+  // from the same published rate.
+  const content = await getSchemeContent();
+  const amount = priceForPlot(input.sizeSqm, content.scheme.pricePerSqm);
 
   const created: Application = {
     id: `local-${Date.now()}`,
@@ -461,6 +482,136 @@ export async function saveSettings(
 
   await addAudit({ applicationId: null, actor, action: 'Allocation rule set', note });
   return { allocationPolicy: policy };
+}
+
+// ---------------------------------------------------------------------------
+// Published content (rate, fee, dates, site visits, notice)
+// ---------------------------------------------------------------------------
+
+interface SchemeRow {
+  name: string;
+  price_per_sqm: number;
+  application_fee: number;
+  opens_on: string;
+  closes_on: string;
+  deposit_due_on: string;
+  balance_due_on: string;
+  site_visit_dates: string[] | null;
+  site_visit_time: string | null;
+  site_visit_meeting_point: string | null;
+  notice: string | null;
+}
+
+function mapSchemeRow(row: SchemeRow): SchemeContent {
+  const scheme: Scheme = {
+    ...SCHEME,
+    name: row.name || SCHEME.name,
+    pricePerSqm: Number(row.price_per_sqm),
+    applicationFee: Number(row.application_fee),
+    opensOn: row.opens_on,
+    closesOn: row.closes_on,
+    depositDueOn: row.deposit_due_on,
+    balanceDueOn: row.balance_due_on,
+    notice: row.notice ?? '',
+  };
+  const dates = (row.site_visit_dates ?? []).map((date) => String(date).slice(0, 10));
+  return {
+    scheme,
+    siteVisit: {
+      dates: dates.length > 0 ? dates : [...SITE_VISIT.dates],
+      time: row.site_visit_time || SITE_VISIT.time,
+      meetingPoint: row.site_visit_meeting_point || SITE_VISIT.meetingPoint,
+    },
+  };
+}
+
+/**
+ * What the secretariat has published. Falls back to the seeded constants in
+ * sample mode and when the scheme row is missing, so a page never renders
+ * empty prices.
+ */
+export async function getSchemeContent(): Promise<SchemeContent> {
+  if (!supabase) {
+    const stored = readLocal<SchemeContent | null>(KEYS.content, null);
+    if (!stored) {
+      return { scheme: { ...SCHEME }, siteVisit: { ...SITE_VISIT, dates: [...SITE_VISIT.dates] } };
+    }
+    return {
+      scheme: { ...SCHEME, ...stored.scheme },
+      siteVisit: {
+        ...SITE_VISIT,
+        ...stored.siteVisit,
+        dates:
+          stored.siteVisit?.dates && stored.siteVisit.dates.length > 0
+            ? [...stored.siteVisit.dates]
+            : [...SITE_VISIT.dates],
+      },
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('scheme')
+    .select(
+      'name, price_per_sqm, application_fee, opens_on, closes_on, deposit_due_on, balance_due_on, site_visit_dates, site_visit_time, site_visit_meeting_point, notice',
+    )
+    .maybeSingle<SchemeRow>();
+  if (error) throw new Error(error.message);
+  if (!data) return DEFAULT_CONTENT;
+  return mapSchemeRow(data);
+}
+
+/** Publishes the content and records it, with the reason, in the audit trail. */
+export async function saveSchemeContent(
+  content: SchemeContent,
+  actor: string,
+  note: string,
+): Promise<SchemeContent> {
+  if (supabase) {
+    const { error } = await supabase
+      .from('scheme')
+      .update({
+        price_per_sqm: content.scheme.pricePerSqm,
+        application_fee: content.scheme.applicationFee,
+        opens_on: content.scheme.opensOn,
+        closes_on: content.scheme.closesOn,
+        deposit_due_on: content.scheme.depositDueOn,
+        balance_due_on: content.scheme.balanceDueOn,
+        site_visit_dates: content.siteVisit.dates,
+        site_visit_time: content.siteVisit.time,
+        site_visit_meeting_point: content.siteVisit.meetingPoint,
+        notice: content.scheme.notice,
+      })
+      .eq('id', true);
+    if (error) throw new Error(error.message);
+  } else {
+    writeLocal(KEYS.content, content);
+  }
+
+  await addAudit({ applicationId: null, actor, action: 'Scheme content updated', note });
+  return content;
+}
+
+/** Changes how many plots a tier holds. Capacity already allocated cannot be cut. */
+export async function saveTierTotals(
+  tiers: readonly PlotTier[],
+  actor: string,
+  note: string,
+): Promise<void> {
+  if (supabase) {
+    for (const tier of tiers) {
+      const { error } = await supabase
+        .from('plot_tiers')
+        .update({ total_plots: tier.totalPlots })
+        .eq('id', tier.id);
+      if (error) throw new Error(error.message);
+    }
+  } else {
+    const saved = readLocal<Record<string, number>>(KEYS.tierTotals, {});
+    for (const tier of tiers) saved[tier.id] = tier.totalPlots;
+    writeLocal(KEYS.tierTotals, saved);
+  }
+
+  await addAudit({ applicationId: null, actor, action: 'Plot inventory updated', note });
 }
 
 // ---------------------------------------------------------------------------

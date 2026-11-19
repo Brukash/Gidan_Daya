@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ErrorBlock, LoadingBlock, PageHeader, Passbook, PlotsLeft, TierPill } from '../components/ui';
 import { listTiers } from '../data/repository';
-import { SCHEME } from '../data/seed';
+import { useScheme } from '../data/scheme';
 import {
   allocationPercent,
   depositFor,
@@ -14,13 +14,14 @@ import {
 import { formatNaira, formatSqm } from '../lib/format';
 
 export function Plots() {
+  const { scheme } = useScheme();
   const query = useQuery({ queryKey: ['tiers'], queryFn: listTiers });
 
   if (query.isLoading) return <LoadingBlock label="Reading plot availability…" />;
   if (query.isError) return <ErrorBlock message={query.error.message} onRetry={() => void query.refetch()} />;
 
   const tiers = query.data ?? [];
-  const totals = schemeTotals(tiers, SCHEME);
+  const totals = schemeTotals(tiers, scheme);
 
   return (
     <div className="space-y-6">
@@ -37,8 +38,8 @@ export function Plots() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {tiers.map((tier) => {
-          const status = describeTier(tier, SCHEME.closesOn);
-          const price = priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm);
+          const status = describeTier(tier, scheme.closesOn);
+          const price = priceForPlot(tier.sizeSqm, scheme.pricePerSqm);
           const soldOut = remainingPlots(tier) === 0;
 
           return (
@@ -92,13 +93,13 @@ export function Plots() {
                 <th scope="col">Plots</th>
                 <th scope="col">Allocated</th>
                 <th scope="col">Remaining</th>
-                <th scope="col">Price at {formatNaira(SCHEME.pricePerSqm)}/sqm</th>
+                <th scope="col">Price at {formatNaira(scheme.pricePerSqm)}/sqm</th>
                 <th scope="col">50% deposit</th>
               </tr>
             </thead>
             <tbody>
               {tiers.map((tier) => {
-                const price = priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm);
+                const price = priceForPlot(tier.sizeSqm, scheme.pricePerSqm);
                 return (
                   <tr key={tier.id}>
                     <td className="font-medium">{formatSqm(tier.sizeSqm)}</td>
