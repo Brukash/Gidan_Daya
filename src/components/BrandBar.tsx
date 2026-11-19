@@ -17,7 +17,7 @@ export function BrandBar({ children }: { children?: ReactNode }) {
             height={32}
             className="h-8 w-8 shrink-0"
           />
-          <span className="text-[0.625rem] uppercase leading-[1.3] tracking-[0.1em] text-ink-soft">
+          <span className="hidden text-[0.625rem] uppercase leading-[1.3] tracking-[0.1em] text-ink-soft sm:block">
             CBN Staff Multipurpose Cooperative Society
           </span>
         </Link>
