@@ -58,13 +58,10 @@ export function SignIn() {
             alt=""
             width={34}
             height={34}
-            className="h-[34px] w-[34px]"
+            className="h-[34px] w-[34px] shrink-0"
           />
-          <span className="flex flex-col leading-none">
-            <span className="font-display text-[1.15rem] leading-none tracking-[-0.03em]">Gidan Daya</span>
-            <span className="mt-1 text-[0.625rem] uppercase leading-none tracking-[0.1em] text-ink-soft">
-              CBN Staff Multipurpose Cooperative Society
-            </span>
+          <span className="text-[0.625rem] uppercase leading-[1.3] tracking-[0.1em] text-ink-soft">
+            CBN Staff Multipurpose Cooperative Society
           </span>
         </Link>
 

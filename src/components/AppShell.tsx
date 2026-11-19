@@ -57,12 +57,9 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
           height={40}
           className="mt-0.5 h-10 w-10 shrink-0"
         />
-        <div className="min-w-0">
-          <p className="font-display text-[1.3rem] leading-none tracking-[-0.03em]">Gidan Daya</p>
-          <p className="mt-1 text-[0.625rem] uppercase leading-[1.35] tracking-[0.1em] text-paper/55">
-            CBN Staff Multipurpose Cooperative Society
-          </p>
-        </div>
+        <p className="min-w-0 pt-0.5 text-[0.625rem] uppercase leading-[1.35] tracking-[0.1em] text-paper/55">
+          CBN Staff Multipurpose Cooperative Society
+        </p>
       </div>
 
       <div className="my-5 h-px bg-paper/15" />
@@ -150,7 +147,6 @@ export function AppShell() {
               </button>
               <div className="flex items-center gap-2 lg:hidden">
                 <img src="/brand/coop-seal-64.png" alt="" width={24} height={24} className="h-6 w-6" />
-                <p className="font-display text-base leading-none">Gidan Daya</p>
               </div>
               <p className="hidden text-sm text-ink-soft lg:block">
                 Applications close 30 Dec 2026 · ₦27,000 per sqm

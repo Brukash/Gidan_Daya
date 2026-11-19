@@ -62,21 +62,16 @@ function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/92 backdrop-blur-sm">
       <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 px-5 py-3">
-        <Link to="/" className="flex shrink-0 items-center gap-2.5">
+        <Link to="/" className="flex min-w-0 items-center gap-2.5">
           <img
             src="/brand/coop-seal-64.png"
             alt=""
             width={32}
             height={32}
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
           />
-          <span className="flex flex-col leading-none">
-            <span className="whitespace-nowrap font-display text-[1.15rem] leading-none tracking-[-0.03em]">
-              Gidan Daya
-            </span>
-            <span className="mt-1 hidden text-[0.625rem] uppercase leading-none tracking-[0.1em] text-ink-soft sm:block">
-              CBN Staff Multipurpose Cooperative Society
-            </span>
+          <span className="text-[0.625rem] uppercase leading-[1.3] tracking-[0.1em] text-ink-soft">
+            CBN Staff Multipurpose Cooperative Society
           </span>
         </Link>
 
@@ -408,16 +403,13 @@ function SiteFooter() {
     <footer className="border-t border-line bg-paper">
       <div className="mx-auto grid max-w-[1180px] gap-8 px-5 py-10 sm:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <div className="flex items-center gap-2.5">
-            <img
-              src="/brand/coop-seal-64.png"
-              alt="The seal of the CBN Staff Multipurpose Cooperative Society"
-              width={36}
-              height={36}
-              className="h-9 w-9"
-            />
-            <p className="font-display text-lg leading-none">Gidan Daya</p>
-          </div>
+          <img
+            src="/brand/coop-seal-64.png"
+            alt="The seal of the CBN Staff Multipurpose Cooperative Society"
+            width={36}
+            height={36}
+            className="h-9 w-9"
+          />
           <p className="mt-2 max-w-xs text-sm text-ink-soft">
             Residential plots at the CBN Staff Multipurpose Cooperative Society Estate, Gidan Daya, FCT Abuja.
           </p>
