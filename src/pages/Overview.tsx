@@ -288,12 +288,12 @@ export function Overview() {
           <ul className="divide-y divide-line">
             {all.slice(0, 5).map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
+                <Link to={`/app/application/${item.id}`} className="min-w-0 hover:underline">
                   <p className="truncate font-medium">{item.memberName}</p>
                   <p className="num text-xs text-ink-soft">
                     {formatSqm(item.sizeSqm)} · {item.reference} · {formatDate(item.createdAt)}
                   </p>
-                </div>
+                </Link>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="num text-sm">{formatNaira(item.amount)}</span>
                   <ApplicationPill status={item.status} />

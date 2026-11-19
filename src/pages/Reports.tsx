@@ -227,8 +227,10 @@ export function Reports() {
                       <tr key={item.id}>
                         <td className="num text-ink-soft">{position ?? '—'}</td>
                         <td>
-                          <span className="block font-medium">{item.memberName}</span>
-                          <span className="num block text-xs text-ink-soft">{item.memberNumber}</span>
+                          <Link to={`/app/application/${item.id}`} className="block hover:underline">
+                            <span className="block font-medium">{item.memberName}</span>
+                            <span className="num block text-xs text-ink-soft">{item.memberNumber}</span>
+                          </Link>
                         </td>
                         <td>
                           <span className="block">{gradeLabel(item.cadre)}</span>

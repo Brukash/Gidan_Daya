@@ -129,6 +129,7 @@ interface EvidenceRow {
   file_name: string;
   file_type: string;
   file_size: number;
+  storage_path: string;
   preview: string | null;
   status: PaymentEvidence['status'];
   uploaded_at: string;
@@ -632,7 +633,23 @@ export async function listEvidence(applicationId?: string): Promise<PaymentEvide
   if (applicationId) query = query.eq('application_id', applicationId);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return ((data ?? []) as EvidenceRow[]).map(mapEvidence);
+
+  const rows = (data ?? []) as EvidenceRow[];
+  if (rows.length === 0) return [];
+
+  // The bucket is private, so a reader opens a file through a short-lived
+  // signed link. The storage policy decides who may mint one: the applicant who
+  // owns the application, or any secretariat account. Uploads made from the
+  // public form sit under `public/`, and only the secretariat can read those.
+  const { data: links } = await supabase.storage
+    .from('payment-evidence')
+    .createSignedUrls(
+      rows.map((row) => row.storage_path),
+      60 * 60,
+    );
+  const byPath = new Map((links ?? []).map((link) => [link.path, link.signedUrl] as const));
+
+  return rows.map((row) => mapEvidence({ ...row, preview: byPath.get(row.storage_path) ?? null }));
 }
 
 function mapEvidence(row: EvidenceRow): PaymentEvidence {

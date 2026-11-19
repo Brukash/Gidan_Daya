@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useSession } from '../auth/session';
 import {
   ApplicationPill,
@@ -540,16 +540,19 @@ export function Application() {
   const allQuery = useQuery({ queryKey: ['applications', 'all'], queryFn: () => listApplications() });
   const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
-  const current = mineQuery.data?.[0];
+  const { id: routeId } = useParams();
+  const target = routeId
+    ? ((allQuery.data ?? []).find((item) => item.id === routeId) ?? null)
+    : mineQuery.data?.[0];
   const evidenceQuery = useQuery({
-    queryKey: ['evidence', current?.id ?? 'none'],
-    queryFn: () => listEvidence(current?.id),
-    enabled: Boolean(current),
+    queryKey: ['evidence', target?.id ?? 'none'],
+    queryFn: () => listEvidence(target?.id),
+    enabled: Boolean(target),
   });
   const auditQuery = useQuery({
-    queryKey: ['audit', current?.id ?? 'none'],
-    queryFn: () => listAudit(current?.id),
-    enabled: Boolean(current),
+    queryKey: ['audit', target?.id ?? 'none'],
+    queryFn: () => listAudit(target?.id),
+    enabled: Boolean(target),
   });
 
   const payment = useMutation({
@@ -569,22 +572,31 @@ export function Application() {
     onError: (error: Error) => toast({ title: 'Could not record the payment', detail: error.message }),
   });
 
-  if (mineQuery.isLoading) return <LoadingBlock label="Opening your application…" />;
+  if (routeId ? allQuery.isLoading : mineQuery.isLoading) {
+    return <LoadingBlock label={routeId ? 'Opening the application…' : 'Opening your application…'} />;
+  }
   if (mineQuery.isError) return <ErrorBlock message={mineQuery.error.message} onRetry={() => void mineQuery.refetch()} />;
+  if (routeId && allQuery.isError) {
+    return <ErrorBlock message={allQuery.error.message} onRetry={() => void allQuery.refetch()} />;
+  }
 
   const applications = mineQuery.data ?? [];
-  const currentApplication = applications[0];
+  const currentApplication = routeId ? target : applications[0];
 
   if (!currentApplication) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Gidan Daya" title="My application" />
+        <PageHeader eyebrow="Gidan Daya" title={routeId ? 'Application' : 'My application'} />
         <EmptyState
-          title="No application yet"
-          body={`Applications close ${formatDate(scheme.closesOn)}. Choose a plot size and accept the conditions to start.`}
+          title={routeId ? 'Application not found' : 'No application yet'}
+          body={
+            routeId
+              ? 'That application does not exist, or this account cannot read it.'
+              : `Applications close ${formatDate(scheme.closesOn)}. Choose a plot size and accept the conditions to start.`
+          }
           action={
-            <Link to="/apply" className="btn btn-primary">
-              Start subscription
+            <Link to={routeId ? '/app' : '/apply'} className={routeId ? 'btn btn-ghost' : 'btn btn-primary'}>
+              {routeId ? 'Back to overview' : 'Start subscription'}
             </Link>
           }
         />
@@ -605,8 +617,8 @@ export function Application() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Gidan Daya"
-        title="My application"
-        description={`${currentApplication.reference} · ${formatSqm(currentApplication.sizeSqm)} · submitted ${formatDate(currentApplication.createdAt)}`}
+        title={routeId ? 'Application' : 'My application'}
+        description={`${currentApplication.reference} · ${formatSqm(currentApplication.sizeSqm)} · ${routeId ? `${currentApplication.memberName} · ` : ''}submitted ${formatDate(currentApplication.createdAt)}`}
         actions={
           <>
             <Button
@@ -619,9 +631,15 @@ export function Application() {
             >
               Download statement
             </Button>
-            <Link to="/apply" className="btn btn-primary">
-              Start another subscription
-            </Link>
+            {routeId ? (
+              <Link to="/app" className="btn btn-ghost">
+                Back to overview
+              </Link>
+            ) : (
+              <Link to="/apply" className="btn btn-primary">
+                Start another subscription
+              </Link>
+            )}
           </>
         }
       />

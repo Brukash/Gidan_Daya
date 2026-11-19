@@ -73,6 +73,7 @@ export default function App() {
                   <Route index element={<Overview />} />
                   <Route path="plots" element={<Plots />} />
                   <Route path="application" element={<Application />} />
+                  <Route path="application/:id" element={<Application />} />
                   <Route path="members" element={<Members />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="content" element={<Content />} />
