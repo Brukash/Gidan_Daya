@@ -40,9 +40,9 @@ describe('scheme facts from the call document', () => {
     for (const design of HOUSE_DESIGNS) expect(design.label).toMatch(/^4-bedroom/);
   });
 
-  it('runs the site visits on 28 November and 5 December 2026 from 10:00', () => {
+  it('runs the site visits on 28 November and 5 December 2026 from 10:00 am', () => {
     expect([...SITE_VISIT.dates]).toEqual(['2026-11-28', '2026-12-05']);
-    expect(SITE_VISIT.time).toBe('10:00');
+    expect(SITE_VISIT.time).toBe('10:00 am');
     expect(SITE_VISIT.meetingPoint).toMatch(/National Ecumenical Centre/);
   });
 

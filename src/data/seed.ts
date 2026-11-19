@@ -28,7 +28,7 @@ export const SCHEME: Scheme = {
 };
 
 export const SITE_VISIT = {
-  time: '10:00',
+  time: '10:00 am',
   meetingPoint:
     'The National Ecumenical Centre, opposite CBN Head Office back entrance, CBD, FCT Abuja',
   dates: ['2026-11-28', '2026-12-05'],
