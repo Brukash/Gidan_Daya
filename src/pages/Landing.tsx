@@ -61,22 +61,6 @@ const TERMS = [
     title: 'Sizes may be adjusted after survey',
     body: 'Variations are reconciled: extra square metres are payable by the subscriber, and payments in excess of the allotted size are refunded unconditionally.',
   },
-  {
-    title: 'Refunds are conditional',
-    body: 'Refunds need a written request and happen only after the plot is resold, with penalties and administrative charges of up to 5%. Infrastructure funds already applied to site works are non-refundable, and resale can take months.',
-  },
-  {
-    title: 'Title perfection is at your cost',
-    body: 'Temporary allocation follows full payment; the permanent letter follows completion of the building. File opening, survey, ground rent, stamp duty, registration, consent and FCTA charges are borne by the subscriber.',
-  },
-  {
-    title: 'Default has consequences',
-    body: 'Missing a scheduled payment attracts administrative charges and interest at the prevailing project loan rate, and the plot may be reallocated without further notice.',
-  },
-  {
-    title: 'The cooperative may vary the project',
-    body: 'Layout, house types, plot sizes, infrastructure rates and timelines may change to meet regulatory or planning requirements. Subscribers waive claims for damages arising from such variations.',
-  },
 ] as const;
 
 function SiteHeader() {
