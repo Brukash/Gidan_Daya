@@ -106,7 +106,7 @@ interface ApplicationRow {
   created_at: string;
   confirmed_on: string | null;
   terms_version: string;
-  accepted_at: string;
+  terms_accepted_at: string;
   accepted_clauses: string[];
 }
 
@@ -171,7 +171,7 @@ function mapApplication(row: ApplicationRow, memberName: string): Application {
     createdAt: row.created_at.slice(0, 10),
     confirmedOn: row.confirmed_on,
     termsVersion: row.terms_version,
-    acceptedAt: row.accepted_at,
+    acceptedAt: row.terms_accepted_at,
     acceptedClauses: row.accepted_clauses ?? [],
   };
 }
