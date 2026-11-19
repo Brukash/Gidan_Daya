@@ -3,7 +3,16 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSession } from '../auth/session';
 import { BrandBar } from '../components/BrandBar';
-import { Button, ErrorBlock, Field, LoadingBlock, PageHeader, Passbook, useToast } from '../components/ui';
+import {
+  Button,
+  ErrorBlock,
+  Field,
+  LoadingBlock,
+  PageHeader,
+  Passbook,
+  PlotsLeft,
+  useToast,
+} from '../components/ui';
 import { createApplication, getSettings, listTiers } from '../data/repository';
 import { SCHEME } from '../data/seed';
 import { TERMS_CLAUSES, TERMS_EFFECTIVE_ON, TERMS_VERSION } from '../data/terms';
@@ -147,7 +156,7 @@ export function Apply() {
         <div className="space-y-6">
           <PageHeader
             eyebrow="Gidan Daya"
-            title="Apply for a plot"
+            title="Start your subscription"
             description={`One application covers one plot. The ${formatNaira(SCHEME.applicationFee)} application fee is non-refundable; the 50% deposit is due ${formatDate(SCHEME.depositDueOn)}.`}
             actions={
               <ol className="flex items-center gap-2 text-xs" aria-label="Application steps">
@@ -225,9 +234,12 @@ export function Apply() {
                               />
                               <span className="font-medium">{formatSqm(tier.sizeSqm)}</span>
                             </span>
-                            <span className="num mt-1 block text-xs text-ink-soft">
-                              {soldOut ? 'Fully allocated' : `${left} of ${tier.totalPlots} left`}
-                            </span>
+                            <PlotsLeft
+                              remaining={left}
+                              total={tier.totalPlots}
+                              size="sm"
+                              className="mt-1.5"
+                            />
                           </span>
                           <span className="num shrink-0 text-right text-sm">
                             {formatNaira(priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm))}

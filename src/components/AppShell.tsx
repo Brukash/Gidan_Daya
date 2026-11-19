@@ -18,7 +18,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: '/app', label: 'Overview', end: true, icon: 'grid' },
   { to: '/app/plots', label: 'Plot availability', end: false, icon: 'plots' },
-  { to: '/apply', label: 'Apply for a plot', end: false, icon: 'plus' },
+  { to: '/apply', label: 'Start subscription', end: false, icon: 'plus' },
   { to: '/app/application', label: 'My application', end: false, icon: 'receipt' },
   { to: '/app/members', label: 'Applicants', end: false, icon: 'users', adminOnly: true },
   { to: '/app/reports', label: 'Reports', end: false, icon: 'chart', adminOnly: true },

@@ -215,6 +215,36 @@ export function Kpi({ label, value, context }: { label: string; value: string; c
   );
 }
 
+/**
+ * The remaining-plots figure, repeated wherever a member picks a size. The
+ * number is the point, so it is set in the display face; the denominator stays
+ * quiet beside it.
+ */
+export function PlotsLeft({
+  remaining,
+  total,
+  size = 'md',
+  className = '',
+}: {
+  remaining: number;
+  total: number;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}) {
+  const soldOut = remaining === 0;
+  const scale = size === 'lg' ? 'text-[2rem]' : size === 'md' ? 'text-[1.6rem]' : 'text-[1.2rem]';
+  return (
+    <p className={`flex items-baseline gap-1.5 ${className}`} title={`${remaining} of ${total} plots left`}>
+      <span className={`num font-display leading-none ${scale} ${soldOut ? 'text-clay-deep' : 'text-forest'}`}>
+        {remaining}
+      </span>
+      <span className="text-[0.625rem] font-semibold uppercase leading-tight tracking-[0.09em] text-ink-soft">
+        plots left
+      </span>
+    </p>
+  );
+}
+
 interface ToastItem {
   id: number;
   title: string;

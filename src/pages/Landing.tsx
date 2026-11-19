@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { SchemeWindow } from '../components/SchemeWindow';
-import { DataModeBadge, Passbook, TierPill } from '../components/ui';
+import { DataModeBadge, Passbook, PlotsLeft, TierPill } from '../components/ui';
+import { useQuery } from '@tanstack/react-query';
+import { listTiers } from '../data/repository';
 import { SAMPLE_TIERS, SCHEME, SITE_VISIT } from '../data/seed';
 import {
   allocationPercent,
@@ -16,8 +18,8 @@ import { dataMode } from '../lib/supabase';
 const PAYMENT_STEPS = [
   {
     number: '01',
-    title: 'Apply and pay the fee',
-    body: 'Complete the application and pay the ₦20,000 non-refundable fee by transfer, with your ID number and name in the narration. Applications close 30 December 2026.',
+    title: 'Start your subscription',
+    body: 'Complete the subscription and pay the ₦20,000 non-refundable fee by transfer, with your ID number and name in the narration. Applications close 30 December 2026.',
   },
   {
     number: '02',
@@ -95,7 +97,7 @@ function SiteHeader() {
             Sign in
           </Link>
           <Link to="/apply" className="btn btn-primary whitespace-nowrap text-sm">
-            Apply for a plot
+            Start subscription
           </Link>
         </div>
       </div>
@@ -104,7 +106,8 @@ function SiteHeader() {
 }
 
 function Hero() {
-  const totals = schemeTotals(SAMPLE_TIERS, SCHEME);
+  const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
+  const totals = schemeTotals(tiersQuery.data ?? SAMPLE_TIERS, SCHEME);
 
   return (
     <section className="border-b border-line">
@@ -124,7 +127,7 @@ function Hero() {
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link to="/apply" className="btn btn-primary">
-              Start an application
+              Start subscription
             </Link>
             <a href="#plots" className="btn btn-ghost">
               See plot prices
@@ -159,7 +162,8 @@ function Hero() {
 }
 
 function PlotPrices() {
-  const rows = SAMPLE_TIERS.map((tier) => ({
+  const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
+  const rows = (tiersQuery.data ?? SAMPLE_TIERS).map((tier) => ({
     tier,
     status: describeTier(tier, SCHEME.closesOn),
     price: priceForPlot(tier.sizeSqm, SCHEME.pricePerSqm),
@@ -189,7 +193,7 @@ function PlotPrices() {
               <tr>
                 <th scope="col">Plot size</th>
                 <th scope="col">Plots</th>
-                <th scope="col">Remaining</th>
+                <th scope="col">Plots left</th>
                 <th scope="col" className="w-[22%]">
                   Allocated
                 </th>
@@ -207,7 +211,9 @@ function PlotPrices() {
                     </Link>
                   </td>
                   <td className="num text-ink-soft">{tier.totalPlots}</td>
-                  <td className="num text-ink-soft">{remainingPlots(tier)}</td>
+                  <td>
+                    <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />
+                  </td>
                   <td className="min-w-[9rem]">
                     <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                     <span className="num mt-1 block text-xs text-ink-soft">
@@ -231,9 +237,7 @@ function PlotPrices() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-display text-[1.2rem] leading-none">{formatSqm(tier.sizeSqm)}</p>
-                  <p className="num mt-1 text-xs text-ink-soft">
-                    {remainingPlots(tier)} of {tier.totalPlots} plots left
-                  </p>
+                  <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} className="mt-1.5" />
                 </div>
                 <TierPill status={status} />
               </div>
@@ -244,7 +248,7 @@ function PlotPrices() {
                 </p>
               </div>
               <Link to={`/apply?size=${tier.sizeSqm}`} className="btn btn-ghost mt-3 w-full text-sm">
-                Apply for {formatSqm(tier.sizeSqm)}
+                Start subscription
               </Link>
             </li>
           ))}
@@ -252,7 +256,7 @@ function PlotPrices() {
 
         <p className="mt-4 max-w-3xl text-xs leading-relaxed text-ink-soft">
           Plot sizes are subject to the size allocated after survey; additional square metres are payable by the
-          subscriber. Availability shown on this page is sample data.
+          subscriber.{dataMode === 'sample' ? ' Availability shown on this page is sample data.' : ''}
         </p>
       </div>
     </section>
@@ -380,14 +384,14 @@ function ClosingCta() {
             Choose a size, then secure your position.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-paper/75">
-            No account needed to apply: pick a size, acknowledge the conditions and submit. Sign in afterwards if you
+            No account needed: pick a size, acknowledge the conditions and submit. Sign in afterwards if you
             want to attach payment evidence and follow the balance. If this deployment is not yet connected to Supabase,
             it runs on sample data so you can walk the full flow.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Link to="/apply" className="btn btn-primary">
-            Apply for a plot
+            Start subscription
           </Link>
           <Link to="/signin" className="btn btn-quiet text-paper" style={{ borderColor: 'rgba(247,243,234,0.32)', borderWidth: 1 }}>
             Sign in

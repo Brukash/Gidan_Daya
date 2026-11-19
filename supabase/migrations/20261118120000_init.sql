@@ -741,6 +741,21 @@ grant execute on function public.review_payment_evidence(uuid, public.evidence_s
 
 grant select on public.scheme to authenticated;
 grant select on public.plot_tiers to authenticated;
+
+-- The scheme's published figures are public: the landing page and the
+-- no-account subscription form read sizes, availability and the rate before
+-- anyone signs in. These are the call document's published numbers, not
+-- member records.
+create policy scheme_select_anon on public.scheme
+  for select to anon
+  using (true);
+
+create policy plot_tiers_select_anon on public.plot_tiers
+  for select to anon
+  using (true);
+
+grant select on public.scheme to anon;
+grant select on public.plot_tiers to anon;
 grant select on public.profiles to authenticated;
 grant select on public.applications to authenticated;
 grant select on public.payment_evidence to authenticated;

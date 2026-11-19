@@ -8,6 +8,7 @@ import {
   LoadingBlock,
   PageHeader,
   Passbook,
+  PlotsLeft,
   TierPill,
 } from '../components/ui';
 import { getSettings, listApplications, listTiers } from '../data/repository';
@@ -68,7 +69,7 @@ export function Overview() {
         description={`Plots from 200 to 500 sqm at ${formatNaira(SCHEME.pricePerSqm)} per sqm. Applications close ${formatDate(SCHEME.closesOn)}.`}
         actions={
           <Link to="/apply" className="btn btn-primary">
-            Apply for a plot
+            Start subscription
           </Link>
         }
       />
@@ -131,9 +132,12 @@ export function Overview() {
                       <td>
                         <Link to={`/apply?size=${tier.sizeSqm}`} className="block hover:underline">
                           <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
-                          <span className="num text-xs text-ink-soft">
-                            {remainingPlots(tier)} of {tier.totalPlots} left
-                          </span>
+                          <PlotsLeft
+                            remaining={remainingPlots(tier)}
+                            total={tier.totalPlots}
+                            size="sm"
+                            className="mt-0.5"
+                          />
                         </Link>
                       </td>
                       <td className="num whitespace-nowrap">
@@ -163,9 +167,12 @@ export function Overview() {
                   <div className="flex items-start justify-between gap-3">
                     <Link to={`/apply?size=${tier.sizeSqm}`} className="min-w-0">
                       <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
-                      <span className="num block text-xs text-ink-soft">
-                        {remainingPlots(tier)} of {tier.totalPlots} left
-                      </span>
+                      <PlotsLeft
+                        remaining={remainingPlots(tier)}
+                        total={tier.totalPlots}
+                        size="sm"
+                        className="mt-0.5"
+                      />
                     </Link>
                     <TierPill status={status} />
                   </div>
@@ -229,7 +236,7 @@ export function Overview() {
                   to start.
                 </p>
                 <Link to="/apply" className="btn btn-forest mt-3 w-full text-sm">
-                  Apply for a plot
+                  Start subscription
                 </Link>
               </div>
             )}

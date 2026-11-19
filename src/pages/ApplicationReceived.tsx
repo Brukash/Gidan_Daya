@@ -157,7 +157,7 @@ export function ApplicationReceived() {
                 Sign in to track it
               </Link>
               <Link to="/apply" className="btn btn-ghost">
-                Apply for another plot
+                Start another subscription
               </Link>
               <Link to="/" className="btn btn-quiet">
                 Back to the scheme

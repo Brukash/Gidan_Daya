@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ErrorBlock, LoadingBlock, PageHeader, Passbook, TierPill } from '../components/ui';
+import { ErrorBlock, LoadingBlock, PageHeader, Passbook, PlotsLeft, TierPill } from '../components/ui';
 import { listTiers } from '../data/repository';
 import { SCHEME } from '../data/seed';
 import {
@@ -30,7 +30,7 @@ export function Plots() {
         description={`${totals.remaining} of ${totals.plots} plots remain. Allocation is first-come, first-served, determined by payment confirmation — with priority for Clerk to Assistant Manager cadre.`}
         actions={
           <Link to="/apply" className="btn btn-primary">
-            Apply for a plot
+            Start subscription
           </Link>
         }
       />
@@ -48,7 +48,9 @@ export function Plots() {
                 <TierPill status={status} />
               </div>
 
-              <p className="num mt-3 font-display text-[1.15rem] text-forest">{formatNaira(price)}</p>
+              <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} className="mt-3" />
+
+              <p className="num mt-1.5 font-display text-[1.15rem] text-forest">{formatNaira(price)}</p>
               <p className="num text-xs text-ink-soft">50% deposit {formatNaira(depositFor(price))}</p>
 
               <div className="mt-3">
@@ -60,7 +62,7 @@ export function Plots() {
                 </div>
                 <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                 <p className="num mt-1.5 text-xs text-ink-soft">
-                  {tier.allocated} of {tier.totalPlots} taken · {remainingPlots(tier)} left
+                  {tier.allocated} of {tier.totalPlots} plots taken
                 </p>
               </div>
 
@@ -71,7 +73,7 @@ export function Plots() {
                   </button>
                 ) : (
                   <Link to={`/apply?size=${tier.sizeSqm}`} className="btn btn-forest w-full text-sm">
-                    Apply for {formatSqm(tier.sizeSqm)}
+                    Start subscription
                   </Link>
                 )}
               </div>
@@ -102,7 +104,9 @@ export function Plots() {
                     <td className="font-medium">{formatSqm(tier.sizeSqm)}</td>
                     <td className="num text-ink-soft">{tier.totalPlots}</td>
                     <td className="num text-ink-soft">{tier.allocated}</td>
-                    <td className="num">{remainingPlots(tier)}</td>
+                    <td>
+                      <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />
+                    </td>
                     <td className="num">{formatNaira(price)}</td>
                     <td className="num text-ink-soft">{formatNaira(depositFor(price))}</td>
                   </tr>

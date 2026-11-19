@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { SAMPLE_TIERS, SCHEME } from '../data/seed';
 import { allocationPercent, describeTier, priceForPlot, remainingPlots } from '../lib/allocations';
 import { formatCompactNaira, formatNaira, formatSqm } from '../lib/format';
-import { Passbook, TierPill } from './ui';
+import { Passbook, PlotsLeft, TierPill } from './ui';
 
 /** A hand-built replica of the plot screen — interactive, not a screenshot. */
 export function SchemeWindow() {
@@ -82,9 +82,12 @@ export function SchemeWindow() {
               <span className="num text-sm font-semibold text-forest">{percent}%</span>
             </div>
             <Passbook allocated={active.allocated} totalPlots={active.totalPlots} label={`${percent}% allocated`} />
-            <p className="num mt-1.5 text-[0.6875rem] text-ink-soft">
-              {active.allocated} of {active.totalPlots} plots taken · {remainingPlots(active)} left
-            </p>
+            <div className="mt-2 flex items-baseline justify-between gap-2">
+              <PlotsLeft remaining={remainingPlots(active)} total={active.totalPlots} size="sm" />
+              <span className="num text-[0.6875rem] text-ink-soft">
+                {active.allocated} of {active.totalPlots} taken
+              </span>
+            </div>
           </div>
 
           <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3">
@@ -104,7 +107,7 @@ export function SchemeWindow() {
 
           <div className="mt-4 flex items-center gap-2">
             <Link to={`/apply?size=${active.sizeSqm}`} className="btn btn-forest flex-1 text-sm">
-              Apply for this plot
+              Start subscription
             </Link>
             <span className="num rounded-sm border border-line px-2 py-2 text-[0.6875rem] text-ink-soft">
               {status.detail}
