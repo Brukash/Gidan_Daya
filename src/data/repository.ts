@@ -28,6 +28,7 @@ import {
   SITE_VISIT,
 } from './seed';
 import { TERMS_CLAUSES, TERMS_VERSION } from './terms';
+import { EVIDENCE_MAX_BYTES, EVIDENCE_TYPE_LABEL } from '../lib/validation';
 
 const KEYS = {
   applications: 'gidan-daya:applications',
@@ -751,12 +752,30 @@ export async function addEvidence(input: NewEvidence): Promise<PaymentEvidence> 
   return evidence;
 }
 
+/** Messages raised by the reservation functions, in the applicant's words. */
+const PUBLIC_EVIDENCE_MESSAGES: Record<string, string> = {
+  APPLICATION_NOT_FOUND: 'That reference and member ID did not match, so the receipt was not attached.',
+  EVIDENCE_ALREADY_VERIFIED:
+    'A receipt is already attached to this application. Send any further evidence to the secretariat.',
+  EVIDENCE_TYPE_INVALID: `Attach a ${EVIDENCE_TYPE_LABEL} file.`,
+  EVIDENCE_SIZE_INVALID: `Files must be ${Math.round(EVIDENCE_MAX_BYTES / (1024 * 1024))} MB or smaller.`,
+  EVIDENCE_PATH_MISMATCH: 'The receipt could not be attached to this application.',
+  SCHEME_NOT_CONFIGURED: 'The scheme figures are not published yet, so the receipt was not attached.',
+};
+
+function publicEvidenceMessage(message: string): string {
+  return PUBLIC_EVIDENCE_MESSAGES[message] ?? message;
+}
+
 /**
  * Evidence attached from the public application form, where the applicant has no
- * account. The file goes to the `public/<reference>/` prefix the anonymous
- * storage policy allows, and `record_public_fee_evidence` writes the record
- * only for the matching reference and member ID, with the fee taken from the
- * scheme row rather than from the browser.
+ * account.
+ *
+ * The database grants the one receipt slot for the application first, and the
+ * storage policy accepts an anonymous upload only at the path that slot holds —
+ * so a visitor cannot upload into a folder of their own choosing, and one
+ * application cannot collect files. `settle_public_evidence` then confirms the
+ * bytes arrived, or clears the slot when they did not.
  */
 export async function addPublicEvidence(input: {
   application: Application;
@@ -767,10 +786,8 @@ export async function addPublicEvidence(input: {
   if (supabase) {
     const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
     const path = `public/${application.reference}/${Date.now()}-${safeName}`;
-    const upload = await supabase.storage.from('payment-evidence').upload(path, file, { upsert: false });
-    if (upload.error) throw new Error(upload.error.message);
 
-    const { data, error } = await supabase.rpc('record_public_fee_evidence', {
+    const { data: reserved, error: reserveError } = await supabase.rpc('reserve_public_evidence', {
       p_reference: application.reference,
       p_member_number: application.memberNumber,
       p_file_name: file.name,
@@ -778,10 +795,36 @@ export async function addPublicEvidence(input: {
       p_file_size: file.size,
       p_storage_path: path,
     });
-    if (error) throw new Error(error.message);
-    const row = (Array.isArray(data) ? data[0] : data) as EvidenceRow | null;
+    if (reserveError) throw new Error(publicEvidenceMessage(reserveError.message));
+    const row = (Array.isArray(reserved) ? reserved[0] : reserved) as EvidenceRow | null;
     if (!row) throw new Error('The evidence could not be recorded.');
-    return mapEvidence(row);
+
+    // A different reserved path means the earlier file arrived: this application
+    // already holds its receipt, so a retry adds nothing.
+    if (row.storage_path !== path) return mapEvidence(row);
+
+    const upload = await supabase.storage.from('payment-evidence').upload(path, file, { upsert: false });
+    if (upload.error) {
+      // Give the slot back so no receipt is left pointing at a file that is not there.
+      await supabase.rpc('settle_public_evidence', { p_evidence_id: row.id });
+      throw new Error(upload.error.message);
+    }
+
+    const { data: settled, error: settleError } = await supabase.rpc('settle_public_evidence', {
+      p_evidence_id: row.id,
+    });
+    if (settleError) throw new Error(settleError.message);
+    const confirmed = (Array.isArray(settled) ? settled[0] : settled) as EvidenceRow | null;
+    if (!confirmed) throw new Error('The receipt did not reach storage. Try attaching it again.');
+    return mapEvidence(confirmed);
+  }
+
+  const alreadyAttached = localRows<PaymentEvidence>(KEYS.evidence).find(
+    (item) =>
+      item.applicationId === application.id && item.kind === 'application-fee' && item.status !== 'rejected',
+  );
+  if (alreadyAttached) {
+    throw new Error('A receipt is already attached to this application.');
   }
 
   const content = await getSchemeContent();
