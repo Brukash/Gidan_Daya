@@ -40,6 +40,7 @@ for (const size of [
   const name = `Ifeoma Nwosu ${size.tag}`;
   await page.getByLabel('Full name').fill(name);
   await page.getByLabel('Member ID').fill(`CBN/2021/${size.tag}`);
+  await page.getByLabel('Email address').fill(`ifeoma.${size.tag}@coop.example`);
   await page.getByRole('button', { name: /continue to the conditions/i }).click();
   await page.waitForSelector('text=Conditions of application');
 

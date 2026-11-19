@@ -42,6 +42,7 @@ describe('applicationDetailsSchema', () => {
 
   const valid = {
     applicantName: 'Aisha Bello',
+    email: 'aisha.bello@coop.example',
     sizeSqm: 300,
     houseDesign: 'semi-detached' as const,
     memberNumber: 'CBN/2019/0417',
@@ -79,6 +80,13 @@ describe('applicationDetailsSchema', () => {
     expect(schema.safeParse({ ...valid, memberCategory: 'contractor' }).success).toBe(false);
   });
 
+  it('needs an email address the secretariat can reach', () => {
+    expect(schema.safeParse({ ...valid, email: '' }).success).toBe(false);
+    const wrong = schema.safeParse({ ...valid, email: 'aisha.bello' });
+    expect(wrong.success).toBe(false);
+    if (!wrong.success) expect(wrong.error.issues[0]?.message).toBe('Enter a valid email address.');
+  });
+
   it('needs a full name, because an applicant may not be signed in', () => {
     const result = schema.safeParse({ ...valid, applicantName: '  ' });
     expect(result.success).toBe(false);
@@ -93,6 +101,7 @@ describe('applicationSchema acceptance', () => {
 
   const base = {
     applicantName: 'Aisha Bello',
+    email: 'aisha.bello@coop.example',
     sizeSqm: 300,
     houseDesign: 'detached' as const,
     memberNumber: 'CBN/2019/0417',

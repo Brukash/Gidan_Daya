@@ -99,6 +99,12 @@ export function ApplicationReceived() {
                   <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Member ID</dt>
                   <dd className="num mt-0.5 text-sm font-medium">{application.memberNumber}</dd>
                 </div>
+                {application.applicantEmail ? (
+                  <div>
+                    <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Contact email</dt>
+                    <dd className="mt-0.5 break-words text-sm font-medium">{application.applicantEmail}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Member category</dt>
                   <dd className="mt-0.5 text-sm font-medium">{memberCategoryLabel(application.memberCategory)}</dd>

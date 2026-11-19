@@ -70,6 +70,8 @@ export interface Application {
   reference: string;
   memberId: string;
   memberName: string;
+  /** Contact address the applicant gave; empty on rows created before it was asked for. */
+  applicantEmail: string;
   memberNumber: string;
   cadre: Cadre;
   memberCategory: MemberCategory;

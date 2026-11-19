@@ -191,11 +191,12 @@ export async function exportRegisterPdf(
 
   autoTable(doc, {
     startY: afterTiers + 20,
-    head: [['Reference', 'Applicant', 'Member ID', 'Grade', 'Plot', 'Paid', 'Status', 'Applied']],
+    head: [['Reference', 'Applicant', 'Member ID', 'Contact email', 'Grade', 'Plot', 'Paid', 'Status', 'Applied']],
     body: applications.map((item) => [
       item.reference,
       item.memberName,
       item.memberNumber,
+      item.applicantEmail || '—',
       item.cadre,
       formatSqm(item.sizeSqm),
       formatNaira(item.paid),
@@ -204,7 +205,7 @@ export async function exportRegisterPdf(
     ]),
     styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 4.5, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
     headStyles: { fillColor: [28, 74, 54], textColor: [247, 243, 234], fontStyle: 'bold', fontSize: 7.5 },
-    columnStyles: { 5: { halign: 'right' } },
+    columnStyles: { 6: { halign: 'right' } },
     margin: { left: margin, right: margin },
     didDrawPage: () => {
       doc.setFont('helvetica', 'normal');
@@ -263,6 +264,7 @@ export async function exportAllocationXlsx(
     { header: 'Reference', key: 'reference', width: 15 },
     { header: 'Applicant', key: 'memberName', width: 24 },
     { header: 'Member ID', key: 'memberNumber', width: 18 },
+    { header: 'Contact email', key: 'applicantEmail', width: 28 },
     { header: 'Grade', key: 'cadre', width: 22 },
     { header: 'Plot (sqm)', key: 'sizeSqm', width: 11 },
     { header: 'Design', key: 'design', width: 26 },
@@ -276,6 +278,7 @@ export async function exportAllocationXlsx(
       reference: item.reference,
       memberName: item.memberName,
       memberNumber: item.memberNumber,
+      applicantEmail: item.applicantEmail,
       cadre: item.cadre,
       sizeSqm: item.sizeSqm,
       design: item.houseDesign === 'detached' ? 'Detached duplex' : 'Semi-detached duplex',

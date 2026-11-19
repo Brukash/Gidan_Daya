@@ -94,6 +94,7 @@ interface ApplicationRow {
   id: string;
   reference: string;
   applicant_name?: string | null;
+  applicant_email?: string | null;
   member_id: string | null;
   member_number: string;
   cadre: Cadre;
@@ -160,6 +161,7 @@ function mapApplication(row: ApplicationRow, memberName: string): Application {
     reference: row.reference,
     memberId: row.member_id ?? `guest:${row.member_number}`,
     memberName: memberName || row.applicant_name || '',
+    applicantEmail: row.applicant_email ?? '',
     memberNumber: row.member_number,
     cadre: row.cadre,
     memberCategory: row.member_category,
@@ -286,7 +288,7 @@ export async function listMembers(): Promise<Member[]> {
         guests.set(key, {
           id: application.memberId,
           name: application.memberName,
-          email: '',
+          email: application.applicantEmail,
           memberNumber: application.memberNumber,
           cadre: application.cadre,
           memberCategory: application.memberCategory,
@@ -330,6 +332,8 @@ export interface NewApplication {
   /** Null for an application made without an account. */
   memberId: string | null;
   memberName: string;
+  /** Where the secretariat reaches the applicant about this application. */
+  applicantEmail: string;
   memberNumber: string;
   cadre: Cadre;
   memberCategory: MemberCategory;
@@ -352,6 +356,7 @@ export async function createApplication(input: NewApplication): Promise<Applicat
           p_member_category: input.memberCategory,
           p_accepted_clauses: input.acceptedClauses,
           p_terms_version: TERMS_VERSION,
+          p_applicant_email: input.applicantEmail,
         })
       : await supabase.rpc('create_public_application', {
           p_size_sqm: input.sizeSqm,
@@ -362,6 +367,7 @@ export async function createApplication(input: NewApplication): Promise<Applicat
           p_applicant_name: input.memberName,
           p_accepted_clauses: input.acceptedClauses,
           p_terms_version: TERMS_VERSION,
+          p_applicant_email: input.applicantEmail,
         });
     if (error) throw new Error(error.message);
     const row = (Array.isArray(data) ? data[0] : data) as ApplicationRow | null;
@@ -390,6 +396,7 @@ export async function createApplication(input: NewApplication): Promise<Applicat
     reference: `GD-${input.sizeSqm}-${String(sequence).padStart(4, '0')}`,
     memberId: input.memberId ?? `guest:${input.memberNumber}`,
     memberName: input.memberName,
+    applicantEmail: input.applicantEmail,
     memberNumber: input.memberNumber,
     cadre: input.cadre,
     memberCategory: input.memberCategory,

@@ -52,6 +52,7 @@ export function applicationDetailsSchema(availableSizes: readonly number[]) {
       .trim()
       .min(3, 'Enter the full name on your cooperative record.')
       .max(120, 'That name is too long.'),
+    email: z.email('Enter a valid email address.').max(120, 'That email address is too long.'),
     sizeSqm: z
       .number({ error: 'Choose a plot size.' })
       .refine((value) => availableSizes.includes(value), {

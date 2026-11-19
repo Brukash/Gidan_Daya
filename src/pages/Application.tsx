@@ -644,6 +644,11 @@ export function Application() {
               <p className="mt-1 text-xs text-ink-soft">
                 {memberCategoryLabel(currentApplication.memberCategory)} · {gradeLabel(currentApplication.cadre)}
               </p>
+              {currentApplication.applicantEmail ? (
+                <p className="mt-1 break-words text-xs text-ink-soft">
+                  Contact: <span className="text-ink">{currentApplication.applicantEmail}</span>
+                </p>
+              ) : null}
             </div>
             <ApplicationPill status={currentApplication.status} />
           </div>

@@ -45,6 +45,7 @@ export function Apply() {
 
   const [step, setStep] = useState<1 | 2>(1);
   const [applicantName, setApplicantName] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [sizeSqm, setSizeSqm] = useState<number>(() => Number(params.get('size')) || 300);
   const [houseDesign, setHouseDesign] = useState<HouseDesign>('semi-detached');
   const [memberNumber, setMemberNumber] = useState(user?.memberNumber ?? '');
@@ -114,6 +115,7 @@ export function Apply() {
 
     const parsed = applicationDetailsSchema(availableSizes).safeParse({
       applicantName,
+      email: email.trim().toLowerCase(),
       sizeSqm: selected.sizeSqm,
       houseDesign,
       memberNumber,
@@ -147,6 +149,7 @@ export function Apply() {
 
     const parsed = applicationSchema(availableSizes).safeParse({
       applicantName,
+      email: email.trim().toLowerCase(),
       sizeSqm: selected.sizeSqm,
       houseDesign,
       memberNumber,
@@ -176,6 +179,7 @@ export function Apply() {
     mutation.mutate({
       memberId: user?.id ?? null,
       memberName: parsed.data.applicantName,
+      applicantEmail: parsed.data.email,
       memberNumber: parsed.data.memberNumber.toUpperCase(),
       cadre: parsed.data.cadre,
       memberCategory: parsed.data.memberCategory as MemberCategory,
@@ -385,6 +389,29 @@ export function Apply() {
                         placeholder="19159"
                         aria-invalid={Boolean(errors.memberNumber)}
                         aria-describedby={errors.memberNumber ? 'memberNumber-error' : 'memberNumber-hint'}
+                      />
+                    </Field>
+
+                    <Field
+                      label="Email address"
+                      htmlFor="email"
+                      hint="Where the secretariat reaches you about this application."
+                      error={errors.email}
+                    >
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        className={`input${errors.email ? ' input-invalid' : ''}`}
+                        value={email}
+                        onChange={(event) => {
+                          setEmail(event.target.value);
+                          setErrors((current) => ({ ...current, email: '' }));
+                        }}
+                        autoComplete="email"
+                        placeholder="aisha.bello@cbn.gov.ng"
+                        aria-invalid={Boolean(errors.email)}
+                        aria-describedby={errors.email ? 'email-error' : 'email-hint'}
                       />
                     </Field>
 
@@ -669,6 +696,10 @@ export function Apply() {
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-ink-soft">Member ID</dt>
                       <dd className="num">{memberNumber.toUpperCase() || '—'}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-ink-soft">Email</dt>
+                      <dd className="truncate text-right">{email.trim() || '—'}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-ink-soft">Grade</dt>
