@@ -13,19 +13,22 @@ import {
   PlotsLeft,
   useToast,
 } from '../components/ui';
-import { createApplication, getSettings, listTiers } from '../data/repository';
+import { addPublicEvidence, createApplication, getSettings, listTiers } from '../data/repository';
 import { useScheme } from '../data/scheme';
 import { gradeLabel } from '../data/grades';
 import { TERMS_CLAUSES, TERMS_EFFECTIVE_ON, TERMS_VERSION } from '../data/terms';
 import type { Cadre, HouseDesign, MemberCategory } from '../data/types';
 import { depositFor, describePolicy, priceForPlot, remainingPlots } from '../lib/allocations';
-import { formatDate, formatNaira, formatSqm } from '../lib/format';
+import { formatDate, formatFileSize, formatNaira, formatSqm } from '../lib/format';
 import {
   CADRES,
+  EVIDENCE_MAX_BYTES,
+  EVIDENCE_TYPE_LABEL,
   HOUSE_DESIGNS,
   MEMBER_CATEGORIES,
   applicationDetailsSchema,
   applicationSchema,
+  evidenceProblem,
   memberCategoryLabel,
 } from '../lib/validation';
 
@@ -48,6 +51,8 @@ export function Apply() {
   const [cadre, setCadre] = useState<Cadre>(user?.cadre ?? 'Clerk');
   const [memberCategory, setMemberCategory] = useState<MemberCategory | ''>('');
   const [accepted, setAccepted] = useState<string[]>([]);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceKey, setEvidenceKey] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const tiers = tiersQuery.data ?? [];
@@ -60,15 +65,30 @@ export function Apply() {
   const mutation = useMutation({
     mutationFn: createApplication,
     onSuccess: async (created) => {
+      // The application exists once this runs, so a failure to attach the file
+      // must not throw it away: say what happened and keep the reference.
+      let evidenceName: string | undefined;
+      if (evidenceFile) {
+        try {
+          await addPublicEvidence({ application: created, file: evidenceFile });
+          evidenceName = evidenceFile.name;
+        } catch (error) {
+          toast({
+            title: 'Application submitted, evidence not attached',
+            detail: `${(error as Error).message} Send the receipt to the secretariat quoting ${created.reference}.`,
+          });
+        }
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['applications'] }),
         queryClient.invalidateQueries({ queryKey: ['members'] }),
         queryClient.invalidateQueries({ queryKey: ['tiers'] }),
         queryClient.invalidateQueries({ queryKey: ['audit'] }),
+        queryClient.invalidateQueries({ queryKey: ['evidence'] }),
       ]);
       navigate(`/apply/received/${encodeURIComponent(created.reference)}`, {
         replace: true,
-        state: { application: created },
+        state: { application: created, evidenceFileName: evidenceName },
       });
     },
     onError: (error: Error) => {
@@ -85,6 +105,12 @@ export function Apply() {
 
     if (!selected) {
       setErrors({ sizeSqm: 'No plot sizes are open for application.' });
+      return;
+    }
+
+    const fileProblem = evidenceFile ? evidenceProblem(evidenceFile) : null;
+    if (fileProblem) {
+      setErrors({ evidence: fileProblem });
       return;
     }
 
@@ -138,6 +164,13 @@ export function Apply() {
         if (!next[key]) next[key] = issue.message;
       }
       setErrors(next);
+      return;
+    }
+
+    const fileProblem = evidenceFile ? evidenceProblem(evidenceFile) : null;
+    if (fileProblem) {
+      setErrors({ evidence: fileProblem });
+      setStep(1);
       return;
     }
 
@@ -406,6 +439,53 @@ export function Apply() {
                         ))}
                       </select>
                     </Field>
+                  </div>
+
+                  <div className="mt-4 rounded-sm border border-dashed border-line bg-paper-2 px-3.5 py-3">
+                    <label htmlFor="fee-evidence" className="text-sm font-semibold text-forest">
+                      Fee evidence <span className="font-normal text-ink-soft">(optional)</span>
+                    </label>
+                    <p id="fee-evidence-hint" className="mt-0.5 text-xs leading-relaxed text-ink-soft">
+                      Already paid the {formatNaira(scheme.applicationFee)} application fee? Attach the receipt or bank
+                      alert here. {EVIDENCE_TYPE_LABEL}, up to {formatFileSize(EVIDENCE_MAX_BYTES)}. The secretariat
+                      verifies it before anything is allocated.
+                    </p>
+                    <input
+                      key={evidenceKey}
+                      id="fee-evidence"
+                      name="feeEvidence"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,application/pdf"
+                      aria-describedby="fee-evidence-hint"
+                      aria-invalid={Boolean(errors.evidence)}
+                      className={`input mt-2 file:mr-3 file:rounded-sm file:border-0 file:bg-paper-3 file:px-2 file:py-1 file:text-xs file:font-semibold${
+                        errors.evidence ? ' input-invalid' : ''
+                      }`}
+                      onChange={(event) => {
+                        setEvidenceFile(event.target.files?.[0] ?? null);
+                        setErrors((current) => ({ ...current, evidence: '' }));
+                      }}
+                    />
+                    {evidenceFile ? (
+                      <p className="num mt-1 text-xs text-ink-soft">
+                        {formatFileSize(evidenceFile.size)} attached
+                        <button
+                          type="button"
+                          className="ml-2 font-semibold text-forest underline"
+                          onClick={() => {
+                            setEvidenceFile(null);
+                            setEvidenceKey((key) => key + 1);
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </p>
+                    ) : null}
+                    {errors.evidence ? (
+                      <p role="alert" className="field-error mt-1">
+                        {errors.evidence}
+                      </p>
+                    ) : null}
                   </div>
 
                   {signedIn ? (

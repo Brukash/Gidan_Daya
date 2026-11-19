@@ -11,13 +11,20 @@ import { memberCategoryLabel } from '../lib/validation';
 
 interface ReceiptState {
   application?: Application;
+  /** Set when the applicant attached the fee receipt on the form. */
+  evidenceFileName?: string;
 }
 
 export function ApplicationReceived() {
   const { reference = '' } = useParams();
   const location = useLocation();
   const { scheme } = useScheme();
-  const preselected = (location.state as ReceiptState | null)?.application;
+  const receiptState = location.state as ReceiptState | null;
+  const preselected = receiptState?.application;
+  const attachedEvidence =
+    preselected && preselected.reference.toUpperCase() === reference.toUpperCase()
+      ? receiptState?.evidenceFileName
+      : undefined;
 
   const [application, setApplication] = useState<Application | null>(
     preselected && preselected.reference.toUpperCase() === reference.toUpperCase() ? preselected : null,
@@ -67,6 +74,12 @@ export function ApplicationReceived() {
                 {application.memberName}, your application for a {formatSqm(application.sizeSqm)} plot is on record. The
                 secretariat will match your transfer using the ID number and name in the narration.
               </p>
+              {attachedEvidence ? (
+                <p className="mt-3 rounded-sm border border-forest/25 bg-sage/40 px-3 py-2 text-xs text-forest">
+                  Fee evidence attached: <span className="num">{attachedEvidence}</span> — pending verification by the
+                  secretariat.
+                </p>
+              ) : null}
             </header>
 
             <section className="card-raised overflow-hidden">

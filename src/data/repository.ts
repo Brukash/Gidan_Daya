@@ -734,6 +734,68 @@ export async function addEvidence(input: NewEvidence): Promise<PaymentEvidence> 
   return evidence;
 }
 
+/**
+ * Evidence attached from the public application form, where the applicant has no
+ * account. The file goes to the `public/<reference>/` prefix the anonymous
+ * storage policy allows, and `record_public_fee_evidence` writes the record
+ * only for the matching reference and member ID, with the fee taken from the
+ * scheme row rather than from the browser.
+ */
+export async function addPublicEvidence(input: {
+  application: Application;
+  file: File;
+}): Promise<PaymentEvidence> {
+  const { application, file } = input;
+
+  if (supabase) {
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    const path = `public/${application.reference}/${Date.now()}-${safeName}`;
+    const upload = await supabase.storage.from('payment-evidence').upload(path, file, { upsert: false });
+    if (upload.error) throw new Error(upload.error.message);
+
+    const { data, error } = await supabase.rpc('record_public_fee_evidence', {
+      p_reference: application.reference,
+      p_member_number: application.memberNumber,
+      p_file_name: file.name,
+      p_file_type: file.type,
+      p_file_size: file.size,
+      p_storage_path: path,
+    });
+    if (error) throw new Error(error.message);
+    const row = (Array.isArray(data) ? data[0] : data) as EvidenceRow | null;
+    if (!row) throw new Error('The evidence could not be recorded.');
+    return mapEvidence(row);
+  }
+
+  const content = await getSchemeContent();
+  const dataUrl = await readFileAsDataUrl(file);
+  const evidence: PaymentEvidence = {
+    id: `ev-local-${Date.now()}`,
+    applicationId: application.id,
+    applicationReference: application.reference,
+    kind: 'application-fee',
+    amount: content.scheme.applicationFee,
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: file.size,
+    preview: dataUrl && dataUrl.length <= 1_500_000 ? dataUrl : null,
+    status: 'pending',
+    uploadedAt: new Date().toISOString(),
+    reviewedBy: null,
+    reviewedAt: null,
+    reviewNote: null,
+  };
+
+  upsertLocal(KEYS.evidence, evidence);
+  await addAudit({
+    applicationId: application.id,
+    actor: application.memberName,
+    action: 'Payment evidence uploaded',
+    note: `${file.name} for ${application.reference}, pending verification.`,
+  });
+  return evidence;
+}
+
 export interface EvidenceReview {
   evidence: PaymentEvidence;
   application: Application;
