@@ -186,7 +186,7 @@ export function Settings() {
             <h2 className="text-[1.05rem]">What the call actually says</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-soft">
               Allocation is first-come, first-served, determined by the date of payment confirmation — and preference
-              is given to members in the lower cadre (Clerk to Assistant Manager). The document does not say what
+              is given to members in the lower grades (Assistant Manager to Drivers). The document does not say what
               happens when a senior cadre pays first, so ask the cooperative to minute the order it wants, then set it
               here.
             </p>

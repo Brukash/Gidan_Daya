@@ -13,6 +13,7 @@ import {
   PlotsLeft,
   useToast,
 } from '../components/ui';
+import { gradeLabel } from '../data/grades';
 import { getSettings, isSampleMode, listApplications, listMembers, listTiers } from '../data/repository';
 import { useScheme } from '../data/scheme';
 import {
@@ -125,7 +126,7 @@ export function Reports() {
             <Kpi
               label="Applications"
               value={String(apps.length)}
-              context={`${priorityCount} from priority cadres`}
+              context={`${priorityCount} from priority grades`}
             />
             <Kpi label="Committed" value={formatCompactNaira(committed)} context="Plot value on all applications" />
             <Kpi label="Collected" value={formatCompactNaira(collected)} context={`Fees recorded ${formatCompactNaira(fees)}`} />
@@ -230,9 +231,9 @@ export function Reports() {
                           <span className="num block text-xs text-ink-soft">{item.memberNumber}</span>
                         </td>
                         <td>
-                          <span className="block">{item.cadre}</span>
+                          <span className="block">{gradeLabel(item.cadre)}</span>
                           {hasPriority(item.cadre) ? (
-                            <span className="text-xs text-ink-soft">Priority cadre</span>
+                            <span className="text-xs text-ink-soft">Priority grade</span>
                           ) : null}
                         </td>
                         <td className="num whitespace-nowrap">{formatSqm(item.sizeSqm)}</td>

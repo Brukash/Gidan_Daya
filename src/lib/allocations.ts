@@ -1,13 +1,16 @@
 import type { AllocationPolicy, ApplicationStatus, Cadre, PlotTier, Scheme } from '../data/types';
+import { PRIORITY_BAND_LABEL, SENIOR_BAND_LABEL, hasPriorityGrade } from '../data/grades';
 import { daysUntil, formatDate } from './format';
 
 export const PASSBOOK_TICKS = 24;
 
-/** Cadres that the call gives priority to: Clerk through Assistant Manager. */
-const PRIORITY_CADRES: Cadre[] = ['Clerk', 'Executive Officer', 'Assistant Manager'];
-
+/**
+ * Priority goes to the lower grades the call names: Assistant Manager down to
+ * Drivers. The band is defined by rank in `grades.ts` so it cannot drift from
+ * the grade list.
+ */
 export function hasPriority(cadre: Cadre): boolean {
-  return PRIORITY_CADRES.includes(cadre);
+  return hasPriorityGrade(cadre);
 }
 
 export function priceForPlot(sizeSqm: number, pricePerSqm: number = 27_000): number {
@@ -125,14 +128,14 @@ const POLICY_BY_ID: Record<AllocationPolicy, PolicyOption> = {
     label: 'Payment date, then cadre',
     summary: 'Lower cadre ranks ahead only among payments confirmed on the same date.',
     detail:
-      'Applications are ordered by the date the deposit is confirmed. Within one date, Clerk, Executive Officer and Assistant Manager rank ahead of Manager and Senior Manager. This honours both sentences in the call without letting an early junior payment overtake everyone.',
+      `Applications are ordered by the date the deposit is confirmed. Within one date, ${PRIORITY_BAND_LABEL} rank ahead of ${SENIOR_BAND_LABEL}. This honours both sentences in the call without letting an early junior payment overtake everyone.`,
   },
   'cadre-priority': {
     id: 'cadre-priority',
     label: 'Cadre first',
     summary: 'Every lower-cadre applicant ranks ahead, however late they paid.',
     detail:
-      'All Clerk to Assistant Manager applicants are placed before Manager and Senior Manager applicants, and payment date only breaks ties inside each group. This maximises the preference the call describes, at the cost of strict first-come order.',
+      `All ${PRIORITY_BAND_LABEL} applicants are placed before ${SENIOR_BAND_LABEL} applicants, and payment date only breaks ties inside each group. This maximises the preference the call describes, at the cost of strict first-come order.`,
   },
 };
 
@@ -216,11 +219,11 @@ export function positionReason(application: { confirmedOn: string | null; cadre:
 
   if (policy === 'cadre-priority') {
     return hasPriority(application.cadre)
-      ? `${application.cadre} is a priority cadre, so you rank ahead of Manager and above regardless of payment date.`
-      : `${application.cadre} is not a priority cadre, so Clerk to Assistant Manager rank ahead of you whatever the payment date.`;
+      ? `${application.cadre} is a priority grade, so you rank ahead of ${SENIOR_BAND_LABEL} regardless of payment date.`
+      : `${application.cadre} is not a priority grade, so ${PRIORITY_BAND_LABEL} rank ahead of you whatever the payment date.`;
   }
 
   return hasPriority(application.cadre)
-    ? `Confirmed ${when}. ${application.cadre} ranks ahead of Manager and above on the same date.`
-    : `Confirmed ${when}. Clerk to Assistant Manager confirmed on the same date rank ahead of you.`;
+    ? `Confirmed ${when}. ${application.cadre} ranks ahead of ${SENIOR_BAND_LABEL} on the same date.`
+    : `Confirmed ${when}. ${PRIORITY_BAND_LABEL} confirmed on the same date rank ahead of you.`;
 }

@@ -87,7 +87,7 @@ export async function exportApplicationPdf(application: Application, scheme: Sch
       ['Rate', `${formatNaira(scheme.pricePerSqm)} per sqm, infrastructure inclusive`],
       ['Plot price', formatNaira(application.amount)],
       ['Application fee', `${formatNaira(scheme.applicationFee)} non-refundable — paid`],
-      ['Cadre', application.cadre],
+      ['Grade', application.cadre],
       ['Status', STATUS_LABEL[application.status]],
     ],
     styles: { font: 'helvetica', fontSize: 9, cellPadding: 6, textColor: [26, 36, 32], lineColor: [220, 213, 196] },
@@ -205,7 +205,7 @@ export async function exportRegisterPdf(
 
   autoTable(doc, {
     startY: afterTiers + 20,
-    head: [['Reference', 'Applicant', 'Cooperative ID', 'Cadre', 'Plot', 'Price', 'Paid', 'Outstanding', 'Status', 'Applied']],
+    head: [['Reference', 'Applicant', 'Cooperative ID', 'Grade', 'Plot', 'Price', 'Paid', 'Outstanding', 'Status', 'Applied']],
     body: applications.map((item) => [
       item.reference,
       item.memberName,
@@ -282,13 +282,13 @@ export async function exportAllocationXlsx(
     { header: 'Reference', key: 'reference', width: 15 },
     { header: 'Applicant', key: 'memberName', width: 24 },
     { header: 'Cooperative ID', key: 'memberNumber', width: 18 },
-    { header: 'Cadre', key: 'cadre', width: 18 },
+    { header: 'Grade', key: 'cadre', width: 22 },
     { header: 'Plot (sqm)', key: 'sizeSqm', width: 11 },
     { header: 'Design', key: 'design', width: 26 },
     { header: 'Price (NGN)', key: 'amount', width: 15, style: { numFmt: '#,##0' } },
     { header: 'Paid (NGN)', key: 'paid', width: 15, style: { numFmt: '#,##0' } },
     { header: 'Outstanding (NGN)', key: 'outstanding', width: 18, style: { numFmt: '#,##0' } },
-    { header: 'Cadre priority', key: 'priority', width: 14 },
+    { header: 'Grade priority', key: 'priority', width: 14 },
     { header: 'Status', key: 'status', width: 20 },
     { header: 'Applied', key: 'createdAt', width: 13 },
   ];
@@ -313,7 +313,7 @@ export async function exportAllocationXlsx(
   memberSheet.columns = [
     { header: 'Applicant', key: 'name', width: 26 },
     { header: 'Cooperative ID', key: 'memberNumber', width: 18 },
-    { header: 'Cadre', key: 'cadre', width: 18 },
+    { header: 'Grade', key: 'cadre', width: 22 },
     { header: 'Role', key: 'role', width: 13 },
     { header: 'Joined', key: 'joinedOn', width: 13 },
     { header: 'Plots', key: 'plots', width: 8 },

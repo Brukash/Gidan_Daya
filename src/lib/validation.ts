@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import type { Cadre, HouseDesign, MemberCategory } from '../data/types';
+import { GRADE_NAMES } from '../data/grades';
 import { TERMS_CLAUSES, acceptedAllClauses } from '../data/terms';
 
-export const CADRES: Cadre[] = ['Clerk', 'Executive Officer', 'Assistant Manager', 'Manager', 'Senior Manager'];
+/** The cooperative's grades in rank order, for the application form. */
+export const CADRES: Cadre[] = [...GRADE_NAMES];
 export const MEMBER_CATEGORIES: { id: MemberCategory; label: string }[] = [
   { id: 'active', label: 'Active' },
   { id: 'retiree', label: 'Retiree' },
@@ -62,7 +64,7 @@ export function applicationDetailsSchema(availableSizes: readonly number[]) {
       .min(4, 'Enter your cooperative ID number.')
       .max(24, 'That ID number is too long.')
       .regex(/^[A-Za-z0-9/._-]+$/, 'Use letters, digits, slashes or dashes only.'),
-    cadre: z.enum(['Clerk', 'Executive Officer', 'Assistant Manager', 'Manager', 'Senior Manager']),
+    cadre: z.enum(GRADE_NAMES, { error: 'Choose your grade.' }),
     memberCategory: z.string().refine((value) => MEMBER_CATEGORY_IDS.includes(value as MemberCategory), {
       message: 'Choose your member category: Active, Retiree, Pensioner or Coop Staff.',
     }),

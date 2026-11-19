@@ -77,16 +77,19 @@ describe('passbook ticks', () => {
   });
 });
 
-describe('cadre priority', () => {
-  it('gives priority to Clerk through Assistant Manager', () => {
-    expect(hasPriority('Clerk')).toBe(true);
-    expect(hasPriority('Executive Officer')).toBe(true);
+describe('grade priority', () => {
+  it('gives priority to the lower grades, Assistant Manager to Drivers', () => {
     expect(hasPriority('Assistant Manager')).toBe(true);
+    expect(hasPriority('Senior Supervisor 1')).toBe(true);
+    expect(hasPriority('Clerk')).toBe(true);
+    expect(hasPriority('Treasury Assistant 1')).toBe(true);
+    expect(hasPriority('Drivers')).toBe(true);
   });
 
-  it('does not extend priority to Manager and above', () => {
+  it('does not extend priority to Deputy Manager and above', () => {
+    expect(hasPriority('Deputy Manager')).toBe(false);
     expect(hasPriority('Manager')).toBe(false);
-    expect(hasPriority('Senior Manager')).toBe(false);
+    expect(hasPriority('Deputy Governor')).toBe(false);
   });
 });
 

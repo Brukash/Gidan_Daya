@@ -1,4 +1,7 @@
-export type Cadre = 'Clerk' | 'Executive Officer' | 'Assistant Manager' | 'Manager' | 'Senior Manager';
+import type { Cadre } from './grades';
+
+/** The cooperative's grades, ranks 01–17; see `grades.ts`. */
+export type { Cadre };
 
 /** Where a member stands with the cooperative, as the secretariat records it. */
 export type MemberCategory = 'active' | 'retiree' | 'pensioner' | 'coop-staff';

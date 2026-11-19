@@ -55,7 +55,7 @@ function NoticeBar() {
 const TERMS = [
   {
     title: 'Allocation follows payment confirmation',
-    body: 'Plots are allocated first-come, first-served. The cooperative gives priority to members in the lower cadre — Clerk through Assistant Manager.',
+    body: 'Plots are allocated first-come, first-served. The cooperative gives priority to members in the lower grades — Assistant Manager through Drivers.',
   },
   {
     title: 'Sizes may be adjusted after survey',

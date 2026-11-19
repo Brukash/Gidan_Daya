@@ -15,6 +15,7 @@ import {
 } from '../components/ui';
 import { createApplication, getSettings, listTiers } from '../data/repository';
 import { useScheme } from '../data/scheme';
+import { gradeLabel } from '../data/grades';
 import { TERMS_CLAUSES, TERMS_EFFECTIVE_ON, TERMS_VERSION } from '../data/terms';
 import type { Cadre, HouseDesign, MemberCategory } from '../data/types';
 import { depositFor, describePolicy, priceForPlot, remainingPlots } from '../lib/allocations';
@@ -359,7 +360,12 @@ export function Apply() {
                       />
                     </Field>
 
-                    <Field label="Cadre" htmlFor="cadre" hint="Determines priority under the call." error={errors.cadre}>
+                    <Field
+                      label="Grade"
+                      htmlFor="cadre"
+                      hint="Your cooperative grade, as recorded. It sets priority under the call."
+                      error={errors.cadre}
+                    >
                       <select
                         id="cadre"
                         name="cadre"
@@ -369,7 +375,7 @@ export function Apply() {
                       >
                         {CADRES.map((item) => (
                           <option key={item} value={item}>
-                            {item}
+                            {gradeLabel(item)}
                           </option>
                         ))}
                       </select>
@@ -584,8 +590,8 @@ export function Apply() {
                       <dd className="num">{memberNumber.toUpperCase() || '—'}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-ink-soft">Cadre</dt>
-                      <dd>{cadre}</dd>
+                      <dt className="text-ink-soft">Grade</dt>
+                      <dd>{gradeLabel(cadre)}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-ink-soft">Member category</dt>

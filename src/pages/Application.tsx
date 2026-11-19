@@ -22,6 +22,7 @@ import {
   reviewEvidence,
 } from '../data/repository';
 import { useScheme } from '../data/scheme';
+import { gradeLabel } from '../data/grades';
 import { TERMS_CLAUSES } from '../data/terms';
 import type {
   Application as ApplicationRecord,
@@ -637,7 +638,7 @@ export function Application() {
                   : '4-bedroom semi-detached duplex'}
               </p>
               <p className="mt-1 text-xs text-ink-soft">
-                {memberCategoryLabel(currentApplication.memberCategory)} · {currentApplication.cadre}
+                {memberCategoryLabel(currentApplication.memberCategory)} · {gradeLabel(currentApplication.cadre)}
               </p>
             </div>
             <ApplicationPill status={currentApplication.status} />
@@ -659,7 +660,7 @@ export function Application() {
               <dd className="num mt-1 text-sm font-semibold text-clay-deep">{formatNaira(outstandingFor(currentApplication))}</dd>
             </div>
             <div>
-              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Cadre priority</dt>
+              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Grade priority</dt>
               <dd className="mt-1 text-sm font-semibold">{hasPriority(currentApplication.cadre) ? 'Yes' : 'Standard'}</dd>
             </div>
           </dl>

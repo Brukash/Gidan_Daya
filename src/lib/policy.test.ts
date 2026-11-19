@@ -128,10 +128,10 @@ describe('positionReason', () => {
     expect(positionReason(UNCONFIRMED, 'first-come')).toMatch(/confirms the deposit/i);
   });
 
-  it('explains cadre priority only where the rule uses it', () => {
+  it('explains grade priority only where the rule uses it', () => {
     expect(positionReason(JUNIOR_SAME_DAY, 'first-come')).toMatch(/cadre is not considered/i);
-    expect(positionReason(JUNIOR_SAME_DAY, 'cadre-priority')).toMatch(/priority cadre/i);
-    expect(positionReason(SENIOR_LATE, 'cadre-priority')).toMatch(/not a priority cadre/i);
+    expect(positionReason(JUNIOR_SAME_DAY, 'cadre-priority')).toMatch(/priority grade/i);
+    expect(positionReason(SENIOR_LATE, 'cadre-priority')).toMatch(/not a priority grade/i);
     expect(positionReason(SENIOR_LATE, 'cadre-priority-same-day')).toMatch(/rank ahead of you/i);
   });
 });

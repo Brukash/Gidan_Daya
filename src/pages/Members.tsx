@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useSession } from '../auth/session';
 import { EmptyState, ErrorBlock, LoadingBlock, PageHeader } from '../components/ui';
+import { gradeLabel } from '../data/grades';
 import { listMembers } from '../data/repository';
 import { hasPriority } from '../lib/allocations';
 import { formatDate, formatNaira } from '../lib/format';
@@ -106,9 +107,9 @@ export function Members() {
                           <span className="num block text-xs text-ink-soft">{member.memberNumber}</span>
                         </td>
                         <td>
-                          <span className="block">{member.cadre}</span>
+                          <span className="block">{gradeLabel(member.cadre)}</span>
                           {hasPriority(member.cadre) ? (
-                            <span className="text-xs text-ink-soft">Priority cadre</span>
+                            <span className="text-xs text-ink-soft">Priority grade</span>
                           ) : null}
                         </td>
                         <td className="whitespace-nowrap">{memberCategoryLabel(member.memberCategory)}</td>
@@ -150,7 +151,7 @@ export function Members() {
                   <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
                     <div>
                       <dt className="inline">Cadre </dt>
-                      <dd className="inline">{member.cadre}</dd>
+                      <dd className="inline">{gradeLabel(member.cadre)}</dd>
                     </div>
                     <div>
                       <dt className="inline">Category </dt>

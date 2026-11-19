@@ -28,7 +28,7 @@ export function Plots() {
       <PageHeader
         eyebrow="Gidan Daya"
         title="Plot availability"
-        description={`${totals.remaining} of ${totals.plots} plots remain. Allocation is first-come, first-served, determined by payment confirmation — with priority for Clerk to Assistant Manager cadre.`}
+        description={`${totals.remaining} of ${totals.plots} plots remain. Allocation is first-come, first-served, determined by payment confirmation — with priority for the lower grades, Assistant Manager to Drivers.`}
         actions={
           <Link to="/apply" className="btn btn-primary">
             Start subscription
