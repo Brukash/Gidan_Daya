@@ -11,7 +11,7 @@ import {
   PlotsLeft,
   TierPill,
 } from '../components/ui';
-import { getSettings, listApplications, listTiers } from '../data/repository';
+import { getSettings, isSampleMode, listApplications, listTiers } from '../data/repository';
 import { useScheme } from '../data/scheme';
 import {
   allocationPercent,
@@ -281,7 +281,9 @@ export function Overview() {
             <h2 id="register-heading" className="text-[1.05rem]">
               Recent applications
             </h2>
-            <p className="text-xs text-ink-soft">Sample applicants, ordered newest first.</p>
+            <p className="text-xs text-ink-soft">
+              {isSampleMode ? 'Sample applicants' : 'Applicants'}, ordered newest first.
+            </p>
           </div>
           <ul className="divide-y divide-line">
             {all.slice(0, 5).map((item) => (
@@ -328,8 +330,8 @@ export function Overview() {
             </div>
           </dl>
           <p className="mt-3 text-xs text-ink-soft">
-            {all.length} {plural(all.length, 'application')} on record. Figures are sample data until Supabase is
-            connected.
+            {all.length} {plural(all.length, 'application')} on record.{' '}
+            {isSampleMode ? 'Figures are sample data until Supabase is connected.' : 'Figures are read from the scheme record.'}
           </p>
         </section>
       </div>

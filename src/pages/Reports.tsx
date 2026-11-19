@@ -13,7 +13,7 @@ import {
   PlotsLeft,
   useToast,
 } from '../components/ui';
-import { getSettings, listApplications, listMembers, listTiers } from '../data/repository';
+import { getSettings, isSampleMode, listApplications, listMembers, listTiers } from '../data/repository';
 import { useScheme } from '../data/scheme';
 import {
   STATUS_LABEL,
@@ -142,7 +142,9 @@ export function Reports() {
                 Breakdown by plot size
               </h2>
               <p className="text-xs text-ink-soft">
-                Allocation counts include applications made in this browser while the app runs on sample data.
+                {isSampleMode
+                  ? 'Allocation counts include applications made in this browser while the app runs on sample data.'
+                  : 'Allocation counts come from the scheme record.'}
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -249,8 +251,8 @@ export function Reports() {
           </section>
 
           <p className="text-xs text-ink-soft">
-            Exports are generated in the browser from the data above. No file leaves the device. Figures are sample data
-            until this deployment is connected to Supabase.
+            Exports are generated in the browser from the data above. No file leaves the device.
+            {isSampleMode ? ' Figures are sample data until this deployment is connected to Supabase.' : ''}
           </p>
         </>
       ) : null}

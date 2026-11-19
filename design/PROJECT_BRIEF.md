@@ -31,7 +31,7 @@ The model is judged against `design/SCHEME_FACTS.md`, not against the sample dat
 ## Stack and constraints
 
 - Vite 8 + React 19 + TypeScript 6 (strict), Tailwind 4, React Router 7, TanStack Query 5, React Hook Form + Zod 4.
-- Supabase (Postgres + Auth + RLS) is the backend target. **No project credentials exist in this workspace**, so the app runs against a clearly labelled sample-data repository when `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are absent, and switches to Supabase automatically when they are present. Sample data is labelled in the UI, never presented as real.
+- Supabase (Postgres + Auth + RLS) is the backend. The hosted project `gidan-daya` (`cqdnioyleasggvqlaept`, eu-west-1) has run both migrations, and Vercel production carries `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` for it, so the deployed app reads and writes the hosted database. Local development still uses the local stack; wherever those variables are absent the app falls back to a clearly labelled sample-data repository. Sample data is labelled in the UI, never presented as real.
 - Reports: jsPDF + jspdf-autotable (PDF), ExcelJS (XLSX), both code-split.
 - Deployment: Vercel static SPA (`vercel.json` rewrite), build command `npm run build`, output `dist`.
 - No invented cooperative facts: no registration numbers, addresses, phone numbers, member counts, testimonials or logos. Copy describes the product's real function only.
