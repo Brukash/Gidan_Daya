@@ -238,7 +238,7 @@ export function PlotsLeft({
       <span className={`num font-display leading-none ${scale} ${soldOut ? 'text-clay-deep' : 'text-forest'}`}>
         {remaining}
       </span>
-      <span className="text-[0.625rem] font-semibold uppercase leading-tight tracking-[0.09em] text-ink-soft">
+      <span className="whitespace-nowrap text-[0.625rem] font-semibold uppercase leading-tight tracking-[0.09em] text-ink-soft">
         plots left
       </span>
     </p>

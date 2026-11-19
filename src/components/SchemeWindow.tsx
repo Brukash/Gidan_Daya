@@ -55,9 +55,12 @@ export function SchemeWindow() {
                     <span className="block text-[0.8125rem] font-medium leading-snug text-ink">
                       {formatSqm(tier.sizeSqm)}
                     </span>
-                    <span className="num mt-0.5 block text-[0.625rem] text-ink-soft">
-                      {remainingPlots(tier)} of {tier.totalPlots} left
-                    </span>
+                    <PlotsLeft
+                      remaining={remainingPlots(tier)}
+                      total={tier.totalPlots}
+                      size="sm"
+                      className="mt-1"
+                    />
                   </button>
                 </li>
               );

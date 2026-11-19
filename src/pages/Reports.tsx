@@ -2,7 +2,17 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useSession } from '../auth/session';
-import { Button, EmptyState, ErrorBlock, Kpi, LoadingBlock, PageHeader, Passbook, useToast } from '../components/ui';
+import {
+  Button,
+  EmptyState,
+  ErrorBlock,
+  Kpi,
+  LoadingBlock,
+  PageHeader,
+  Passbook,
+  PlotsLeft,
+  useToast,
+} from '../components/ui';
 import { getSettings, listApplications, listMembers, listTiers } from '../data/repository';
 import { SCHEME } from '../data/seed';
 import {
@@ -161,14 +171,16 @@ export function Reports() {
                         <td className="min-w-[8rem]">
                           <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                           <span className="num mt-1 block text-xs text-ink-soft">
-                            {allocationPercent(tier.allocated, tier.totalPlots)}% · {remainingPlots(tier)} left
+                            {allocationPercent(tier.allocated, tier.totalPlots)}% allocated
                           </span>
                         </td>
                         <td className="num">{own.length}</td>
                         <td className="num whitespace-nowrap">{formatNaira(tier.sizeSqm * SCHEME.pricePerSqm)}</td>
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.amount))}</td>
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.paid))}</td>
-                        <td className="num">{remainingPlots(tier)}</td>
+                        <td>
+                          <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />
+                        </td>
                       </tr>
                     );
                   })}
