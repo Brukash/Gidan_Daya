@@ -29,7 +29,7 @@ export function ApplicationReceived() {
   const lookup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (memberNumber.trim().length < 4) {
-      setError('Enter the cooperative ID number on the application.');
+      setError('Enter the member ID on the application.');
       return;
     }
 
@@ -84,7 +84,7 @@ export function ApplicationReceived() {
                   <dd className="mt-0.5 text-sm font-medium">{application.memberName}</dd>
                 </div>
                 <div>
-                  <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Cooperative ID</dt>
+                  <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-ink-soft">Member ID</dt>
                   <dd className="num mt-0.5 text-sm font-medium">{application.memberNumber}</dd>
                 </div>
                 <div>
@@ -172,7 +172,7 @@ export function ApplicationReceived() {
 
             <p className="text-xs text-ink-soft">
               Keep the reference <span className="num">{application.reference}</span>. You can reopen this receipt with it
-              and your cooperative ID number.
+              and your member ID.
             </p>
           </div>
         ) : (
@@ -181,7 +181,7 @@ export function ApplicationReceived() {
               <p className="eyebrow">Gidan Daya</p>
               <h1 className="mt-3 text-[2rem] leading-none sm:text-[2.4rem]">Open your application</h1>
               <p className="mt-3 max-w-[52ch] text-[0.9375rem] text-ink-soft">
-                The application is on record. Enter the cooperative ID used on it to see the reference, the plot and what
+                The application is on record. Enter the member ID used on it to see the reference, the plot and what
                 is due next.
               </p>
             </header>
@@ -190,10 +190,10 @@ export function ApplicationReceived() {
               <p className="num text-sm font-semibold text-forest">{reference}</p>
               <div className="mt-3">
                 <Field
-                  label="Cooperative ID number"
+                  label="Member ID"
                   htmlFor="lookup-member-number"
                   error={error ?? undefined}
-                  hint="The ID number on the application, e.g. CBN/2019/0417."
+                  hint="The member ID on the application, e.g. 19159."
                 >
                   <input
                     id="lookup-member-number"
@@ -201,7 +201,7 @@ export function ApplicationReceived() {
                     value={memberNumber}
                     onChange={(event) => setMemberNumber(event.target.value)}
                     autoComplete="off"
-                    placeholder="CBN/2019/0417"
+                    placeholder="19159"
                     aria-invalid={Boolean(error)}
                   />
                 </Field>

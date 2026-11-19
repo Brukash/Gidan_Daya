@@ -39,7 +39,7 @@ for (const size of [
 
   const name = `Ifeoma Nwosu ${size.tag}`;
   await page.getByLabel('Full name').fill(name);
-  await page.getByLabel('Cooperative ID number').fill(`CBN/2021/${size.tag}`);
+  await page.getByLabel('Member ID').fill(`CBN/2021/${size.tag}`);
   await page.getByRole('button', { name: /continue to the conditions/i }).click();
   await page.waitForSelector('text=Conditions of application');
 
@@ -68,13 +68,13 @@ for (const size of [
   const lookupShown = await fresh.getByRole('heading', { name: /open your application/i }).count();
   if (lookupShown === 0) note('direct link did not show the lookup form');
 
-  await fresh.getByLabel('Cooperative ID number').fill('CBN/2021/9999');
+  await fresh.getByLabel('Member ID').fill('CBN/2021/9999');
   await fresh.getByRole('button', { name: /open application/i }).click();
   const rejected = await fresh.getByText(/no application matches that reference and id number/i).count();
   console.log(`${size.tag}: wrong ID number rejected: ${rejected > 0}`);
   if (rejected === 0) note('a wrong ID number was not rejected');
 
-  await fresh.getByLabel('Cooperative ID number').fill(`CBN/2021/${size.tag}`);
+  await fresh.getByLabel('Member ID').fill(`CBN/2021/${size.tag}`);
   await fresh.getByRole('button', { name: /open application/i }).click();
   await fresh.waitForSelector(`text=${reference}`);
   console.log(`${size.tag}: receipt reopened from a direct link with reference + ID`);

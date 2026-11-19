@@ -205,7 +205,7 @@ export async function exportRegisterPdf(
 
   autoTable(doc, {
     startY: afterTiers + 20,
-    head: [['Reference', 'Applicant', 'Cooperative ID', 'Grade', 'Plot', 'Price', 'Paid', 'Outstanding', 'Status', 'Applied']],
+    head: [['Reference', 'Applicant', 'Member ID', 'Grade', 'Plot', 'Price', 'Paid', 'Outstanding', 'Status', 'Applied']],
     body: applications.map((item) => [
       item.reference,
       item.memberName,
@@ -281,7 +281,7 @@ export async function exportAllocationXlsx(
   applicationSheet.columns = [
     { header: 'Reference', key: 'reference', width: 15 },
     { header: 'Applicant', key: 'memberName', width: 24 },
-    { header: 'Cooperative ID', key: 'memberNumber', width: 18 },
+    { header: 'Member ID', key: 'memberNumber', width: 18 },
     { header: 'Grade', key: 'cadre', width: 22 },
     { header: 'Plot (sqm)', key: 'sizeSqm', width: 11 },
     { header: 'Design', key: 'design', width: 26 },
@@ -312,7 +312,7 @@ export async function exportAllocationXlsx(
   const memberSheet = workbook.addWorksheet('Applicants');
   memberSheet.columns = [
     { header: 'Applicant', key: 'name', width: 26 },
-    { header: 'Cooperative ID', key: 'memberNumber', width: 18 },
+    { header: 'Member ID', key: 'memberNumber', width: 18 },
     { header: 'Grade', key: 'cadre', width: 22 },
     { header: 'Role', key: 'role', width: 13 },
     { header: 'Joined', key: 'joinedOn', width: 13 },

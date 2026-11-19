@@ -342,7 +342,7 @@ export function Apply() {
                     </div>
 
                     <Field
-                      label="Cooperative ID number"
+                      label="Member ID"
                       htmlFor="memberNumber"
                       hint="As it appears on your cooperative records."
                       error={errors.memberNumber}
@@ -354,7 +354,7 @@ export function Apply() {
                         value={memberNumber}
                         onChange={(event) => setMemberNumber(event.target.value)}
                         autoComplete="off"
-                        placeholder="CBN/2019/0417"
+                        placeholder="19159"
                         aria-invalid={Boolean(errors.memberNumber)}
                         aria-describedby={errors.memberNumber ? 'memberNumber-error' : 'memberNumber-hint'}
                       />
@@ -586,7 +586,7 @@ export function Apply() {
                       <dd className="text-right">{applicantName || '—'}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-ink-soft">Cooperative ID</dt>
+                      <dt className="text-ink-soft">Member ID</dt>
                       <dd className="num">{memberNumber.toUpperCase() || '—'}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">

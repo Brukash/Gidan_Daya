@@ -33,7 +33,7 @@ const ROUTES = [
     auth: false,
     action: async (page) => {
       await page.getByLabel('Full name').fill('Ifeoma Nwosu');
-      await page.getByLabel('Cooperative ID number').fill('CBN/2021/0311');
+      await page.getByLabel('Member ID').fill('19159');
       await page.getByRole('button', { name: /continue to the conditions/i }).click();
       await page.waitForTimeout(400);
     },

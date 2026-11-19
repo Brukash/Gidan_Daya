@@ -61,7 +61,7 @@ export function applicationDetailsSchema(availableSizes: readonly number[]) {
     memberNumber: z
       .string()
       .trim()
-      .min(4, 'Enter your cooperative ID number.')
+      .min(4, 'Enter your member ID.')
       .max(24, 'That ID number is too long.')
       .regex(/^[A-Za-z0-9/._-]+$/, 'Use letters, digits, slashes or dashes only.'),
     cadre: z.enum(GRADE_NAMES, { error: 'Choose your grade.' }),
