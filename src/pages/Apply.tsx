@@ -698,8 +698,8 @@ export function Apply() {
                       <dd className="num">{memberNumber.toUpperCase() || '—'}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-ink-soft">Email</dt>
-                      <dd className="truncate text-right">{email.trim() || '—'}</dd>
+                      <dt className="shrink-0 text-ink-soft">Email</dt>
+                      <dd className="min-w-0 break-all text-right text-xs">{email.trim().toLowerCase() || '—'}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-ink-soft">Grade</dt>
