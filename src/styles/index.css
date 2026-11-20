@@ -449,6 +449,93 @@
   }
 }
 
+  /*
+   * Depth behind the hero: a survey grid drifting one cell per loop, so it
+   * wraps without a seam. Transform only, masked away from the headline, and
+   * off below tablet width where the page should stay still.
+   */
+  .survey-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--color-forest) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--color-forest) 6%, transparent) 1px, transparent 1px);
+    background-size: 88px 88px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 62% at 76% 34%, #000 8%, transparent 76%);
+    mask-image: radial-gradient(ellipse 70% 62% at 76% 34%, #000 8%, transparent 76%);
+    animation: grid-drift 64s linear infinite;
+  }
+
+  /* One element floats, slowly, so the hero has air without asking attention. */
+  .float-slow {
+    animation: float-slow 12s ease-in-out infinite;
+  }
+
+  /* The scheme tape: published figures on a slow loop, like a ledger strip. */
+  .tape {
+    overflow: hidden;
+    border-bottom: 1px solid var(--color-line);
+    background: color-mix(in oklab, var(--color-paper-3) 60%, var(--color-paper));
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+
+  .tape-track {
+    display: flex;
+    width: max-content;
+    animation: tape-drift 58s linear infinite;
+  }
+
+  .tape:hover .tape-track {
+    animation-play-state: paused;
+  }
+
+  /* Two identical sets: -50% is exactly one set, so the reset is invisible. */
+  .tape-set {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    padding: 0.6rem 1.75rem 0.6rem 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--color-ink-soft);
+    white-space: nowrap;
+  }
+
+@keyframes grid-drift {
+  to {
+    transform: translate3d(-88px, -88px, 0);
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+@keyframes tape-drift {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 1023px) {
+  .float-slow {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .survey-grid {
+    display: none;
+  }
+}
+
 @keyframes tick-in {
   from {
     opacity: 0.25;
@@ -483,5 +570,32 @@
   .btn-forest:hover:not(:disabled),
   .plot-card:hover {
     transform: none;
+  }
+
+  .float-slow,
+  .survey-grid,
+  .tape-track {
+    animation: none;
+  }
+
+  /* Without the loop, the tape becomes the list it always was. */
+  .tape {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .tape-track {
+    width: auto;
+    flex-wrap: wrap;
+  }
+
+  .tape-set {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+    padding: 0.55rem 0;
+  }
+
+  .tape-set[aria-hidden='true'] {
+    display: none;
   }
 }
