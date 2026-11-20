@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { SAMPLE_TIERS } from '../data/seed';
 import { useScheme } from '../data/scheme';
 import { allocationPercent, describeTier, remainingPlots } from '../lib/allocations';
 import { formatNaira, formatSqm } from '../lib/format';
+import { AnimatedNumber, EASE_OUT, fadeUp, staggerContainer } from './motion';
 import { Passbook, PlotsLeft, TierPill } from './ui';
 
 /** A hand-built replica of the plot screen — interactive, not a screenshot. */
@@ -18,7 +20,7 @@ export function SchemeWindow() {
   const percent = allocationPercent(active.allocated, active.totalPlots);
 
   return (
-    <div className="overflow-hidden rounded-sm border border-line bg-paper-2 shadow-[0_1px_0_#fff_inset,0_18px_40px_-24px_rgb(26_36_32_/_0.45)]">
+    <div className="plot-card overflow-hidden rounded-sm border border-line bg-paper-2 shadow-[0_1px_0_#fff_inset,0_18px_40px_-24px_rgb(26_36_32_/_0.45)]">
       <div className="flex items-center justify-between gap-3 border-b border-line bg-paper-3/60 px-3 py-2">
         <div className="flex items-center gap-2">
           <span aria-hidden className="flex gap-1">
@@ -35,8 +37,13 @@ export function SchemeWindow() {
         </span>
       </div>
 
-      <div className="grid sm:grid-cols-[10.5rem_1fr]">
-        <div className="border-b border-line bg-paper/60 p-2 sm:border-r sm:border-b-0">
+      <motion.div
+        className="grid sm:grid-cols-[10.5rem_1fr]"
+        initial="hidden"
+        animate="show"
+        variants={staggerContainer(0.12, 0.55)}
+      >
+        <motion.div variants={fadeUp} className="border-b border-line bg-paper/60 p-2 sm:border-r sm:border-b-0">
           <p className="px-2 py-1.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-ink-soft">
             Plot sizes
           </p>
@@ -45,54 +52,74 @@ export function SchemeWindow() {
               const selected = tier.sizeSqm === active.sizeSqm;
               return (
                 <li key={tier.id}>
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => setActiveSize(tier.sizeSqm)}
                     aria-pressed={selected}
-                    className={`w-full rounded-sm px-2 py-2 text-left transition-colors ${
-                      selected ? 'bg-paper-2 shadow-[inset_2px_0_0_#A8452A]' : 'hover:bg-paper-2/70'
+                    whileTap={{ scale: 0.985 }}
+                    transition={{ duration: 0.18, ease: EASE_OUT }}
+                    className={`relative w-full overflow-hidden rounded-sm px-2 py-2 text-left transition-colors duration-200 ${
+                      selected ? 'text-ink' : 'hover:bg-paper-2/70'
                     }`}
                   >
-                    <span className="block text-[0.8125rem] font-medium leading-snug text-ink">
+                    {selected ? (
+                      <motion.span
+                        aria-hidden
+                        layoutId="plot-selection"
+                        className="absolute inset-0 rounded-sm bg-paper-2"
+                        style={{ boxShadow: 'inset 2px 0 0 #A8452A' }}
+                        transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }}
+                      />
+                    ) : null}
+                    <span className="relative block text-[0.8125rem] font-medium leading-snug text-ink">
                       {formatSqm(tier.sizeSqm)}
                     </span>
                     <PlotsLeft
                       remaining={remainingPlots(tier)}
                       total={tier.totalPlots}
                       size="sm"
-                      className="mt-1"
+                      className="relative mt-1"
                     />
-                  </button>
+                  </motion.button>
                 </li>
               );
             })}
           </ul>
-        </div>
+        </motion.div>
 
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-ink-soft">
-                Residential plot
-              </p>
-              <h3 className="mt-1 text-[1.15rem] leading-tight">{formatSqm(active.sizeSqm)}</h3>
+        <motion.div variants={fadeUp} className="p-4">
+          <motion.div
+            key={active.sizeSqm}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.26, ease: EASE_OUT }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-ink-soft">
+                  Residential plot
+                </p>
+                <h3 className="mt-1 text-[1.15rem] leading-tight">{formatSqm(active.sizeSqm)}</h3>
+              </div>
+              <TierPill status={status} />
             </div>
-            <TierPill status={status} />
-          </div>
 
-          <div className="mt-4">
-            <div className="mb-1.5 flex items-baseline justify-between gap-2">
-              <span className="text-[0.6875rem] uppercase tracking-[0.09em] text-ink-soft">Allocated</span>
-              <span className="num text-sm font-semibold text-forest">{percent}%</span>
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                <span className="text-[0.6875rem] uppercase tracking-[0.09em] text-ink-soft">Allocated</span>
+                <span className="num text-sm font-semibold text-forest">
+                  <AnimatedNumber value={percent} />%
+                </span>
+              </div>
+              <Passbook allocated={active.allocated} totalPlots={active.totalPlots} label={`${percent}% allocated`} />
+              <div className="mt-2 flex items-baseline justify-between gap-2">
+                <PlotsLeft remaining={remainingPlots(active)} total={active.totalPlots} size="sm" />
+                <span className="num text-[0.6875rem] text-ink-soft">
+                  <AnimatedNumber value={active.allocated} /> of {active.totalPlots} taken
+                </span>
+              </div>
             </div>
-            <Passbook allocated={active.allocated} totalPlots={active.totalPlots} label={`${percent}% allocated`} />
-            <div className="mt-2 flex items-baseline justify-between gap-2">
-              <PlotsLeft remaining={remainingPlots(active)} total={active.totalPlots} size="sm" />
-              <span className="num text-[0.6875rem] text-ink-soft">
-                {active.allocated} of {active.totalPlots} taken
-              </span>
-            </div>
-          </div>
+          </motion.div>
 
           <dl className="mt-4 grid grid-cols-2 gap-2 border-t border-line pt-3">
             <div>
@@ -113,8 +140,8 @@ export function SchemeWindow() {
               {status.detail}
             </span>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

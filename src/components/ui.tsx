@@ -5,10 +5,13 @@ import {
   useMemo,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { ApplicationStatus, DataMode } from '../data/types';
 import { PASSBOOK_TICKS, filledTicks, type TierStatus } from '../lib/allocations';
+import { AnimatedNumber, EASE_OUT } from './motion';
 
 type Variant = 'primary' | 'forest' | 'ghost' | 'quiet';
 
@@ -67,7 +70,7 @@ export function Passbook({
       aria-label={label ?? `${percent}% of plots allocated`}
     >
       {Array.from({ length: PASSBOOK_TICKS }, (_, index) => (
-        <span key={index} data-filled={index < filled} />
+        <span key={index} data-filled={index < filled} style={{ '--tick': index } as CSSProperties} />
       ))}
     </div>
   );
@@ -134,13 +137,20 @@ export function Field({
         </p>
       ) : null}
       {error ? (
-        <p id={`${htmlFor}-error`} className="field-error" role="alert">
+        <motion.p
+          id={`${htmlFor}-error`}
+          className="field-error"
+          role="alert"
+          initial={{ opacity: 0, y: -3 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: EASE_OUT }}
+        >
           <svg aria-hidden viewBox="0 0 16 16" className="mt-0.5 h-3.5 w-3.5 shrink-0" fill="none">
             <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.4" />
             <path d="M8 4.6v4.2M8 11.2v.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
           {error}
-        </p>
+        </motion.p>
       ) : null}
     </div>
   );
@@ -163,16 +173,32 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
 
 export function LoadingBlock({ label = 'Opening the register…' }: { label?: string }) {
   return (
-    <div role="status" className="flex items-center gap-3 px-1 py-8 text-sm text-ink-soft">
-      <span aria-hidden className="h-3 w-3 animate-pulse rounded-full bg-forest" />
-      {label}
+    <div role="status" className="px-1 py-8">
+      <div className="flex items-center gap-3 text-sm text-ink-soft">
+        <span aria-hidden className="relative flex h-3 w-3">
+          <span className="absolute inset-0 animate-ping rounded-full bg-forest/30" />
+          <span className="relative h-3 w-3 rounded-full bg-forest" />
+        </span>
+        {label}
+      </div>
+      <div aria-hidden className="mt-4 grid max-w-md gap-2">
+        <span className="skeleton h-2.5 w-2/5" />
+        <span className="skeleton h-2.5 w-3/5" />
+        <span className="skeleton h-2.5 w-1/3" />
+      </div>
     </div>
   );
 }
 
 export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="card border-clay/40 bg-clay-tint/50 px-5 py-4">
+    <motion.div
+      role="alert"
+      className="card border-clay/40 bg-clay-tint/50 px-5 py-4"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.24, ease: EASE_OUT }}
+    >
       <p className="text-sm font-semibold text-clay-deep">Something went wrong reading the register</p>
       <p className="mt-1 text-sm text-ink-soft">{message}</p>
       {onRetry ? (
@@ -182,7 +208,7 @@ export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: ()
           </Button>
         </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }
 
@@ -235,9 +261,10 @@ export function PlotsLeft({
   const scale = size === 'lg' ? 'text-[2rem]' : size === 'md' ? 'text-[1.6rem]' : 'text-[1.2rem]';
   return (
     <p className={`flex items-baseline gap-1.5 ${className}`} title={`${remaining} of ${total} plots left`}>
-      <span className={`num font-display leading-none ${scale} ${soldOut ? 'text-clay-deep' : 'text-forest'}`}>
-        {remaining}
-      </span>
+      <AnimatedNumber
+        value={remaining}
+        className={`num font-display leading-none ${scale} ${soldOut ? 'text-clay-deep' : 'text-forest'}`}
+      />
       <span className="whitespace-nowrap text-[0.625rem] font-semibold uppercase leading-tight tracking-[0.09em] text-ink-soft">
         plots left
       </span>
@@ -274,15 +301,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-atomic="false"
         className="pointer-events-none fixed inset-x-3 bottom-3 z-50 flex flex-col items-end gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4"
       >
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="pointer-events-auto w-full max-w-sm rounded-sm border border-forest/20 bg-forest px-4 py-3 text-paper shadow-lg"
-          >
-            <p className="text-sm font-semibold">{item.title}</p>
-            {item.detail ? <p className="mt-0.5 text-xs text-paper/75">{item.detail}</p> : null}
-          </div>
-        ))}
+        <AnimatePresence initial={false}>
+          {items.map((item) => (
+            <motion.div
+              key={item.id}
+              layout
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: EASE_OUT }}
+              className="pointer-events-auto w-full max-w-sm rounded-sm border border-forest/20 bg-forest px-4 py-3 text-paper shadow-lg"
+            >
+              <p className="text-sm font-semibold">{item.title}</p>
+              {item.detail ? <p className="mt-0.5 text-xs text-paper/75">{item.detail}</p> : null}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );

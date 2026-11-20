@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MotionConfig } from 'motion/react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './auth/session';
 import { AppShell } from './components/AppShell';
@@ -56,7 +57,8 @@ export default function App() {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <MotionConfig reducedMotion="user">
+      <QueryClientProvider client={queryClient}>
       <SchemeProvider>
         <SessionProvider>
           <ToastProvider>
@@ -86,6 +88,7 @@ export default function App() {
           </ToastProvider>
         </SessionProvider>
       </SchemeProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </MotionConfig>
   );
 }
