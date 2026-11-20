@@ -9,7 +9,7 @@ import { SAMPLE_TIERS } from '../data/seed';
 import { useScheme } from '../data/scheme';
 import type { Scheme } from '../data/types';
 import { allocationPercent, describeTier, remainingPlots, schemeTotals } from '../lib/allocations';
-import { formatDate, formatNaira, formatShortDate, formatSqm } from '../lib/format';
+import { formatDate, formatNaira, formatSqm } from '../lib/format';
 import { dataMode } from '../lib/supabase';
 import {
   EASE_EXPO,
@@ -50,46 +50,6 @@ const drawLine: Variants = {
   hidden: { scaleX: 0 },
   show: { scaleX: 1, transition: { duration: 0.8, ease: EASE_OUT } },
 };
-
-/**
- * The scheme tape: the figures the cooperative has published, on one slow
- * loop. Every item is a real value from the scheme record — there are no
- * partner logos to show, so the strip carries the facts instead.
- */
-function SchemeTape() {
-  const { scheme, siteVisit } = useScheme();
-  const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
-  const totals = schemeTotals(tiersQuery.data ?? SAMPLE_TIERS, scheme);
-
-  const facts = [
-    `${totals.plots} residential plots`,
-    '200, 300, 400 and 500 sqm',
-    `${formatNaira(scheme.pricePerSqm)} per sqm, infrastructure included`,
-    `Applications close ${formatDate(scheme.closesOn)}`,
-    `Site visits ${siteVisit.dates.map(formatShortDate).join(' and ')}`,
-    `50% first instalment by ${formatDate(scheme.depositDueOn)}`,
-  ];
-
-  const set = (duplicate: boolean) => (
-    <ul className="tape-set" aria-hidden={duplicate || undefined}>
-      {facts.map((fact) => (
-        <li key={fact} className="flex items-center gap-3">
-          <span aria-hidden className="h-1 w-1 shrink-0 rounded-full bg-gold/80" />
-          {fact}
-        </li>
-      ))}
-    </ul>
-  );
-
-  return (
-    <div className="tape">
-      <div className="tape-track">
-        {set(false)}
-        {set(true)}
-      </div>
-    </div>
-  );
-}
 
 /** The secretariat's notice, shown only while it has something to say. */
 function NoticeBar() {
@@ -678,7 +638,6 @@ export function Landing() {
       <main id="main">
         <NoticeBar />
         <Hero />
-        <SchemeTape />
         <PlotPrices />
         <PaymentPlan />
         <SiteVisits />
