@@ -252,8 +252,14 @@ function Hero() {
  */
 function SubscriptionsBanner() {
   const { scheme } = useScheme();
-  const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
-  const totals = schemeTotals(tiersQuery.data ?? SAMPLE_TIERS, scheme);
+  // The seeded tally is a stand-in for sample mode only. A live deployment waits
+  // for Supabase instead of flashing a sample subscription count.
+  const tiersQuery = useQuery({
+    queryKey: ['tiers'],
+    queryFn: listTiers,
+    placeholderData: dataMode === 'sample' ? SAMPLE_TIERS : undefined,
+  });
+  const totals = tiersQuery.data ? schemeTotals(tiersQuery.data, scheme) : null;
 
   return (
     <section aria-label="Plots subscribed" className="border-b border-forest-2 bg-forest text-paper">
@@ -264,10 +270,26 @@ function SubscriptionsBanner() {
             {dataMode === 'sample' ? ' · sample data' : ''}
           </p>
           <p className="num mt-1.5 flex items-baseline gap-2 font-display text-[1.7rem] leading-none text-paper">
-            {totals.allocated}
-            <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-paper/60">
-              {totals.allocated === 1 ? 'plot subscribed' : 'plots subscribed'}
-            </span>
+            {totals ? (
+              <>
+                {totals.allocated}
+                <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-paper/60">
+                  {totals.allocated === 1 ? 'plot subscribed' : 'plots subscribed'}
+                </span>
+              </>
+            ) : (
+              <>
+                <span aria-hidden="true" className="text-paper/35">
+                  —
+                </span>
+                <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-paper/45">
+                  {tiersQuery.isError ? 'unavailable' : 'loading'}
+                </span>
+                <span className="sr-only">
+                  {tiersQuery.isError ? 'Subscription total unavailable' : 'Reading subscription total'}
+                </span>
+              </>
+            )}
           </p>
         </div>
 
