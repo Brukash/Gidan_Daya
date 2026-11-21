@@ -134,7 +134,10 @@ export function Apply() {
 
     setErrors({});
     setStep(2);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // A reduced-motion reader jumps straight to the conditions; everyone else
+    // gets the scroll, which makes the change of step legible.
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
   };
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
