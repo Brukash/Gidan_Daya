@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, type Variants } from 'motion/react';
+import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { SchemeWindow } from '../components/SchemeWindow';
 import { DataModeBadge, Passbook, TierPill } from '../components/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -141,21 +140,41 @@ function SiteHeader() {
   );
 }
 
-/** One headline line, revealed upward from behind a clip. */
-function MaskLine({ children, delay, className = '' }: { children: ReactNode; delay: number; className?: string }) {
+/**
+ * The headline as the three lines it is set in. Each line sits behind its own
+ * clip, and each word rises into place a beat after the one before, so the
+ * sentence reads itself out instead of arriving all at once.
+ */
+const HEADLINE_LINES: { words: string[]; className?: string }[] = [
+  { words: ['Plots', 'at', 'Gidan', 'Daya,'] },
+  { words: ['priced', 'by', 'the'], className: 'text-forest' },
+  { words: ['square', 'metre.'], className: 'text-forest' },
+];
+
+function HeadlineLine({ words, delay, className = '' }: { words: string[]; delay: number; className?: string }) {
+  const reduce = useReducedMotion();
+
   return (
-    <span
-      aria-hidden
-      className="block overflow-hidden pt-[0.06em] -mt-[0.06em] pb-[0.18em] -mb-[0.18em]"
-    >
-      <motion.span
-        className={`block ${className}`}
-        initial={{ y: '118%' }}
-        animate={{ y: '0%' }}
-        transition={{ duration: 0.95, ease: EASE_EXPO, delay }}
-      >
-        {children}
-      </motion.span>
+    <span aria-hidden className="block overflow-hidden pt-[0.06em] -mt-[0.06em] pb-[0.18em] -mb-[0.18em]">
+      <span className={`block ${className}`}>
+        {words.map((word, index) => (
+          <span key={`${word}-${index}`}>
+            <motion.span
+              className="inline-block"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: '0.55em' }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: reduce ? 0.35 : 0.9,
+                ease: EASE_EXPO,
+                delay: reduce ? 0 : delay + index * 0.065,
+              }}
+            >
+              {word}
+            </motion.span>
+            {index < words.length - 1 ? ' ' : null}
+          </span>
+        ))}
+      </span>
     </span>
   );
 }
@@ -176,10 +195,14 @@ function Hero() {
           </motion.p>
           <h1 className="mt-4 text-[2.45rem] leading-[0.98] sm:text-[3.1rem] lg:text-[3.55rem]">
             <span className="sr-only">Plots at Gidan Daya, priced by the square metre.</span>
-            <MaskLine delay={0.14}>Plots at Gidan Daya,</MaskLine>
-            <MaskLine delay={0.24} className="text-forest">
-              priced by the square metre.
-            </MaskLine>
+            {HEADLINE_LINES.map((line, index) => (
+              <HeadlineLine
+                key={line.words.join(' ')}
+                words={line.words}
+                delay={0.12 + index * 0.15}
+                className={line.className}
+              />
+            ))}
           </h1>
           <motion.p
             className="mt-6 max-w-[46ch] text-[1.0625rem] leading-relaxed text-ink-soft"
