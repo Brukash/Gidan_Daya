@@ -2,16 +2,17 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, type Variants } from 'motion/react';
 import { SchemeWindow } from '../components/SchemeWindow';
-import { DataModeBadge, Passbook, PlotsLeft, TierPill } from '../components/ui';
+import { DataModeBadge, Passbook, TierPill } from '../components/ui';
 import { useQuery } from '@tanstack/react-query';
 import { listTiers } from '../data/repository';
 import { SAMPLE_TIERS } from '../data/seed';
 import { useScheme } from '../data/scheme';
 import type { Scheme } from '../data/types';
-import { allocationPercent, describeTier, remainingPlots, schemeTotals } from '../lib/allocations';
+import { allocationPercent, describeTier, schemeTotals } from '../lib/allocations';
 import { formatDate, formatNaira, formatSqm } from '../lib/format';
 import { dataMode } from '../lib/supabase';
 import {
+  AnimatedNumber,
   EASE_EXPO,
   EASE_OUT,
   Reveal,
@@ -245,6 +246,49 @@ function Hero() {
   );
 }
 
+/**
+ * The register's tally: how subscriptions sit against the plots on offer, by
+ * size and in total. A roll-up of the same allocation figures, so it cannot
+ * claim anything the plot data does not already hold.
+ */
+function SubscriptionsBanner() {
+  const { scheme } = useScheme();
+  const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
+  const tiers = tiersQuery.data ?? SAMPLE_TIERS;
+  const totals = schemeTotals(tiers, scheme);
+
+  return (
+    <section aria-label="Subscriptions so far" className="border-b border-forest-2 bg-forest text-paper">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-5 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-10">
+        <div>
+          <p className="text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-gold">
+            Subscriptions so far
+            {dataMode === 'sample' ? ' · sample data' : ''}
+          </p>
+          <p className="num mt-1.5 flex items-baseline gap-2 font-display text-[1.7rem] leading-none text-paper">
+            <AnimatedNumber value={totals.allocated} />
+            <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-paper/60">
+              of {totals.plots} plots taken
+            </span>
+          </p>
+        </div>
+
+        <ul className="flex flex-wrap gap-x-7 gap-y-3 sm:justify-end">
+          {tiers.map((tier) => (
+            <li key={tier.id} className="border-l border-paper/20 pl-3 first:border-l-0 first:pl-0 sm:border-l">
+              <p className="text-[0.625rem] uppercase tracking-[0.09em] text-paper/55">{formatSqm(tier.sizeSqm)}</p>
+              <p className="num mt-0.5 text-sm font-semibold text-paper">
+                <AnimatedNumber value={tier.allocated} />{' '}
+                <span className="text-[0.6875rem] font-normal text-paper/60">of {tier.totalPlots}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 function PlotPrices() {
   const { scheme } = useScheme();
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
@@ -279,7 +323,6 @@ function PlotPrices() {
                 <tr>
                   <th scope="col">Plot size</th>
                   <th scope="col">Plots</th>
-                  <th scope="col">Plots left</th>
                   <th scope="col" className="w-[22%]">
                     Allocated
                   </th>
@@ -295,9 +338,6 @@ function PlotPrices() {
                       </Link>
                     </td>
                     <td className="num text-ink-soft">{tier.totalPlots}</td>
-                    <td>
-                      <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />
-                    </td>
                     <td className="min-w-[9rem]">
                       <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
                       <span className="num mt-1 block text-xs text-ink-soft">
@@ -326,7 +366,9 @@ function PlotPrices() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-display text-[1.2rem] leading-none">{formatSqm(tier.sizeSqm)}</p>
-                  <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} className="mt-1.5" />
+                  <p className="num mt-1.5 text-xs text-ink-soft">
+                    <AnimatedNumber value={tier.allocated} /> of {tier.totalPlots} taken
+                  </p>
                 </div>
                 <TierPill status={status} />
               </div>
@@ -638,6 +680,7 @@ export function Landing() {
       <main id="main">
         <NoticeBar />
         <Hero />
+        <SubscriptionsBanner />
         <PlotPrices />
         <PaymentPlan />
         <SiteVisits />

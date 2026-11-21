@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { SAMPLE_TIERS } from '../data/seed';
 import { useScheme } from '../data/scheme';
-import { allocationPercent, describeTier, remainingPlots } from '../lib/allocations';
+import { allocationPercent, describeTier } from '../lib/allocations';
 import { formatNaira, formatSqm } from '../lib/format';
 import { AnimatedNumber, EASE_OUT, fadeUp, staggerContainer } from './motion';
-import { Passbook, PlotsLeft, TierPill } from './ui';
+import { Passbook, TierPill } from './ui';
 
 /** A hand-built replica of the plot screen — interactive, not a screenshot. */
 export function SchemeWindow() {
@@ -71,15 +71,12 @@ export function SchemeWindow() {
                         transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }}
                       />
                     ) : null}
-                    <span className="relative block text-[0.8125rem] font-medium leading-snug text-ink">
+                    <span className="relative flex items-baseline justify-between gap-2 text-[0.8125rem] font-medium leading-snug text-ink">
                       {formatSqm(tier.sizeSqm)}
+                      <span className="num text-[0.625rem] font-normal text-ink-soft">
+                        <AnimatedNumber value={tier.allocated} /> of {tier.totalPlots}
+                      </span>
                     </span>
-                    <PlotsLeft
-                      remaining={remainingPlots(tier)}
-                      total={tier.totalPlots}
-                      size="sm"
-                      className="relative mt-1"
-                    />
                   </motion.button>
                 </li>
               );
@@ -112,10 +109,9 @@ export function SchemeWindow() {
                 </span>
               </div>
               <Passbook allocated={active.allocated} totalPlots={active.totalPlots} label={`${percent}% allocated`} />
-              <div className="mt-2 flex items-baseline justify-between gap-2">
-                <PlotsLeft remaining={remainingPlots(active)} total={active.totalPlots} size="sm" />
+              <div className="mt-2 flex items-baseline justify-end gap-2">
                 <span className="num text-[0.6875rem] text-ink-soft">
-                  <AnimatedNumber value={active.allocated} /> of {active.totalPlots} taken
+                  <AnimatedNumber value={active.allocated} /> of {active.totalPlots} subscriptions
                 </span>
               </div>
             </div>
@@ -137,7 +133,7 @@ export function SchemeWindow() {
               Start subscription
             </Link>
             <span className="num rounded-sm border border-line px-2 py-2 text-[0.6875rem] text-ink-soft">
-              {status.detail}
+              {status.label}
             </span>
           </div>
         </motion.div>
