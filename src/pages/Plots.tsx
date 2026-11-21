@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ErrorBlock, LoadingBlock, PageHeader, Passbook, PlotsLeft, TierPill } from '../components/ui';
+import { ErrorBlock, LoadingBlock, PageHeader, Passbook, TierPill } from '../components/ui';
 import { listTiers } from '../data/repository';
 import { useScheme } from '../data/scheme';
-import { allocationPercent, describeTier, remainingPlots, schemeTotals } from '../lib/allocations';
+import { allocationPercent, describeTier, remainingPlots } from '../lib/allocations';
 import { formatNaira, formatSqm } from '../lib/format';
 
 export function Plots() {
@@ -14,14 +14,13 @@ export function Plots() {
   if (query.isError) return <ErrorBlock message={query.error.message} onRetry={() => void query.refetch()} />;
 
   const tiers = query.data ?? [];
-  const totals = schemeTotals(tiers, scheme);
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Gidan Daya"
         title="Plot availability"
-        description={`${totals.remaining} of ${totals.plots} plots remain. Allocation is first-come, first-served, determined by payment confirmation — with priority for the lower grades, Assistant Manager to Drivers.`}
+        description="Allocation is first-come, first-served, determined by payment confirmation — with priority for the lower grades, Assistant Manager to Drivers."
         actions={
           <Link to="/apply" className="btn btn-primary">
             Start subscription
@@ -41,9 +40,7 @@ export function Plots() {
                 <TierPill status={status} />
               </div>
 
-              <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} className="mt-3" />
-
-              <p className="num mt-1.5 text-xs text-ink-soft">{formatNaira(scheme.pricePerSqm)} per sqm</p>
+              <p className="num mt-2 text-xs text-ink-soft">{formatNaira(scheme.pricePerSqm)} per sqm</p>
 
               <div className="mt-3">
                 <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -53,9 +50,6 @@ export function Plots() {
                   </span>
                 </div>
                 <Passbook allocated={tier.allocated} totalPlots={tier.totalPlots} />
-                <p className="num mt-1.5 text-xs text-ink-soft">
-                  {tier.allocated} of {tier.totalPlots} plots taken
-                </p>
               </div>
 
               <div className="mt-auto pt-4">
@@ -83,7 +77,6 @@ export function Plots() {
                 <th scope="col">Plot size</th>
                 <th scope="col">Plots</th>
                 <th scope="col">Allocated</th>
-                <th scope="col">Remaining</th>
               </tr>
             </thead>
             <tbody>
@@ -93,9 +86,6 @@ export function Plots() {
                     <td className="font-medium">{formatSqm(tier.sizeSqm)}</td>
                     <td className="num text-ink-soft">{tier.totalPlots}</td>
                     <td className="num text-ink-soft">{tier.allocated}</td>
-                    <td>
-                      <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />
-                    </td>
                   </tr>
                 );
               })}

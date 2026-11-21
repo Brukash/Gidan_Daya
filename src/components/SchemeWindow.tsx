@@ -71,11 +71,8 @@ export function SchemeWindow() {
                         transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }}
                       />
                     ) : null}
-                    <span className="relative flex items-baseline justify-between gap-2 text-[0.8125rem] font-medium leading-snug text-ink">
+                    <span className="relative block text-[0.8125rem] font-medium leading-snug text-ink">
                       {formatSqm(tier.sizeSqm)}
-                      <span className="num text-[0.625rem] font-normal text-ink-soft">
-                        <AnimatedNumber value={tier.allocated} /> of {tier.totalPlots}
-                      </span>
                     </span>
                   </motion.button>
                 </li>
@@ -109,11 +106,6 @@ export function SchemeWindow() {
                 </span>
               </div>
               <Passbook allocated={active.allocated} totalPlots={active.totalPlots} label={`${percent}% allocated`} />
-              <div className="mt-2 flex items-baseline justify-end gap-2">
-                <span className="num text-[0.6875rem] text-ink-soft">
-                  <AnimatedNumber value={active.allocated} /> of {active.totalPlots} subscriptions
-                </span>
-              </div>
             </div>
           </motion.div>
 

@@ -10,7 +10,6 @@ import {
   LoadingBlock,
   PageHeader,
   Passbook,
-  PlotsLeft,
   useToast,
 } from '../components/ui';
 import { gradeLabel } from '../data/grades';
@@ -22,7 +21,6 @@ import {
   allocationPercent,
   describePolicy,
   hasPriority,
-  remainingPlots,
   schemeTotals,
   sumBy,
 } from '../lib/allocations';
@@ -161,7 +159,6 @@ export function Reports() {
                     </th>
                     <th scope="col">Applications</th>
                     <th scope="col">Collected</th>
-                    <th scope="col">Remaining</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -179,9 +176,6 @@ export function Reports() {
                         </td>
                         <td className="num">{own.length}</td>
                         <td className="num whitespace-nowrap">{formatNaira(sumBy(own, (item) => item.paid))}</td>
-                        <td>
-                          <PlotsLeft remaining={remainingPlots(tier)} total={tier.totalPlots} size="sm" />
-                        </td>
                       </tr>
                     );
                   })}

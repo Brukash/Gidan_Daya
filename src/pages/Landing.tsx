@@ -268,7 +268,7 @@ function SubscriptionsBanner() {
           <p className="num mt-1.5 flex items-baseline gap-2 font-display text-[1.7rem] leading-none text-paper">
             <AnimatedNumber value={totals.allocated} />
             <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-paper/60">
-              of {totals.plots} plots taken
+              plots taken
             </span>
           </p>
         </div>
@@ -278,8 +278,7 @@ function SubscriptionsBanner() {
             <li key={tier.id} className="border-l border-paper/20 pl-3 first:border-l-0 first:pl-0 sm:border-l">
               <p className="text-[0.625rem] uppercase tracking-[0.09em] text-paper/55">{formatSqm(tier.sizeSqm)}</p>
               <p className="num mt-0.5 text-sm font-semibold text-paper">
-                <AnimatedNumber value={tier.allocated} />{' '}
-                <span className="text-[0.6875rem] font-normal text-paper/60">of {tier.totalPlots}</span>
+                <AnimatedNumber value={tier.allocated} />
               </p>
             </li>
           ))}
@@ -366,9 +365,6 @@ function PlotPrices() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-display text-[1.2rem] leading-none">{formatSqm(tier.sizeSqm)}</p>
-                  <p className="num mt-1.5 text-xs text-ink-soft">
-                    <AnimatedNumber value={tier.allocated} /> of {tier.totalPlots} taken
-                  </p>
                 </div>
                 <TierPill status={status} />
               </div>

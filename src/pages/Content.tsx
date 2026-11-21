@@ -14,7 +14,6 @@ import {
 import { listAudit, listTiers, saveSchemeContent, saveTierTotals } from '../data/repository';
 import { useScheme } from '../data/scheme';
 import type { PlotTier, SchemeContent } from '../data/types';
-import { remainingPlots } from '../lib/allocations';
 import {
   MAX_SITE_VISITS,
   NOTICE_MAX,
@@ -467,13 +466,11 @@ export function Content() {
                       Allocated
                     </th>
                     <th scope="col">Total plots</th>
-                    <th scope="col">Remaining</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tiers.map((tier) => {
                     const raw = totalValue(totals, tier);
-                    const total = raw.trim() === '' ? Number.NaN : Number(raw);
                     const problem = errors[`tier-${tier.id}`];
                     return (
                       <tr key={tier.id}>
@@ -501,11 +498,6 @@ export function Content() {
                               {problem}
                             </p>
                           ) : null}
-                        </td>
-                        <td className="num">
-                          {Number.isFinite(total)
-                            ? remainingPlots({ totalPlots: total, allocated: tier.allocated })
-                            : '—'}
                         </td>
                       </tr>
                     );

@@ -8,7 +8,6 @@ import {
   LoadingBlock,
   PageHeader,
   Passbook,
-  PlotsLeft,
   TierPill,
 } from '../components/ui';
 import { getSettings, isSampleMode, listApplications, listTiers } from '../data/repository';
@@ -20,7 +19,6 @@ import {
   milestoneLabel,
   positionReason,
   queuePosition,
-  remainingPlots,
   schemeTotals,
   sumBy,
 } from '../lib/allocations';
@@ -76,7 +74,7 @@ export function Overview() {
         <Kpi
           label="Plots available"
           value={String(totals.remaining)}
-          context={`of ${totals.plots} plots in this scheme`}
+          context="First-come, by payment confirmation"
         />
         <Kpi
           label="Allocated"
@@ -129,12 +127,6 @@ export function Overview() {
                       <td>
                         <Link to={`/apply?size=${tier.sizeSqm}`} className="block hover:underline">
                           <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
-                          <PlotsLeft
-                            remaining={remainingPlots(tier)}
-                            total={tier.totalPlots}
-                            size="sm"
-                            className="mt-0.5"
-                          />
                         </Link>
                       </td>
                       <td className="min-w-[9rem]">
@@ -161,12 +153,6 @@ export function Overview() {
                   <div className="flex items-start justify-between gap-3">
                     <Link to={`/apply?size=${tier.sizeSqm}`} className="min-w-0">
                       <span className="block font-medium">{formatSqm(tier.sizeSqm)}</span>
-                      <PlotsLeft
-                        remaining={remainingPlots(tier)}
-                        total={tier.totalPlots}
-                        size="sm"
-                        className="mt-0.5"
-                      />
                     </Link>
                     <TierPill status={status} />
                   </div>

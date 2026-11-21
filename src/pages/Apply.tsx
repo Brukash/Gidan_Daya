@@ -10,7 +10,6 @@ import {
   LoadingBlock,
   PageHeader,
   Passbook,
-  PlotsLeft,
   useToast,
 } from '../components/ui';
 import { addPublicEvidence, createApplication, getSettings, listTiers } from '../data/repository';
@@ -282,12 +281,11 @@ export function Apply() {
                               />
                               <span className="font-medium">{formatSqm(tier.sizeSqm)}</span>
                             </span>
-                            <PlotsLeft
-                              remaining={left}
-                              total={tier.totalPlots}
-                              size="sm"
-                              className="mt-1.5"
-                            />
+                            {soldOut ? (
+                              <span className="mt-1.5 block text-[0.625rem] font-semibold uppercase tracking-[0.09em] text-clay-deep">
+                                Fully allocated
+                              </span>
+                            ) : null}
                           </span>
                           <span className="num shrink-0 text-right text-[0.625rem] text-ink-soft">
                             {formatNaira(scheme.pricePerSqm)}/sqm
@@ -544,9 +542,6 @@ export function Apply() {
 
                       <div className="mt-3">
                         <Passbook allocated={selected.allocated} totalPlots={selected.totalPlots} />
-                        <p className="num mt-1 text-xs text-ink-soft">
-                          {remainingPlots(selected)} of {selected.totalPlots} plots still open
-                        </p>
                       </div>
 
                       <dl className="mt-4 divide-y divide-line border-t border-line text-sm">
