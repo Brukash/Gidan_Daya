@@ -246,19 +246,18 @@ function Hero() {
 }
 
 /**
- * The register's tally: how subscriptions sit against the plots on offer, by
- * size and in total. A roll-up of the same allocation figures, so it cannot
- * claim anything the plot data does not already hold.
+ * One figure for the whole scheme: every plot subscribed, whatever its size.
+ * A roll-up of the same allocation data, so it cannot claim more than the plot
+ * record holds.
  */
 function SubscriptionsBanner() {
   const { scheme } = useScheme();
   const tiersQuery = useQuery({ queryKey: ['tiers'], queryFn: listTiers, placeholderData: SAMPLE_TIERS });
-  const tiers = tiersQuery.data ?? SAMPLE_TIERS;
-  const totals = schemeTotals(tiers, scheme);
+  const totals = schemeTotals(tiersQuery.data ?? SAMPLE_TIERS, scheme);
 
   return (
-    <section aria-label="Subscriptions so far" className="border-b border-forest-2 bg-forest text-paper">
-      <div className="mx-auto flex max-w-[1180px] flex-col gap-5 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-10">
+    <section aria-label="Plots subscribed" className="border-b border-forest-2 bg-forest text-paper">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-3 px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
         <div>
           <p className="text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-gold">
             Subscriptions so far
@@ -267,19 +266,12 @@ function SubscriptionsBanner() {
           <p className="num mt-1.5 flex items-baseline gap-2 font-display text-[1.7rem] leading-none text-paper">
             {totals.allocated}
             <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-paper/60">
-              {totals.allocated === 1 ? 'plot taken' : 'plots taken'}
+              {totals.allocated === 1 ? 'plot subscribed' : 'plots subscribed'}
             </span>
           </p>
         </div>
 
-        <ul className="flex flex-wrap gap-x-7 gap-y-3 sm:justify-end">
-          {tiers.map((tier) => (
-            <li key={tier.id} className="border-l border-paper/20 pl-3 first:border-l-0 first:pl-0 sm:border-l">
-              <p className="text-[0.625rem] uppercase tracking-[0.09em] text-paper/55">{formatSqm(tier.sizeSqm)}</p>
-              <p className="num mt-0.5 text-sm font-semibold text-paper">{tier.allocated}</p>
-            </li>
-          ))}
-        </ul>
+        <p className="text-xs text-paper/60">All plot sizes counted together.</p>
       </div>
     </section>
   );
