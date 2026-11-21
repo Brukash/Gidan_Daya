@@ -300,7 +300,7 @@
   }
 
   .headline-word {
-    animation: headline-tint 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: headline-tint 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .ledger {

@@ -159,7 +159,7 @@ function HeadlineLine({ words, delay, color }: { words: string[]; delay: number;
     <span aria-hidden className="block overflow-hidden pt-[0.06em] -mt-[0.06em] pb-[0.18em] -mb-[0.18em]">
       <span className="headline-line block" style={{ '--word-color': color } as CSSProperties}>
         {words.map((word, index) => {
-          const wordDelay = reduce ? 0 : delay + index * 0.065;
+          const wordDelay = reduce ? 0 : delay + index * 0.055;
           return (
             <span key={`${word}-${index}`}>
               <motion.span
@@ -168,7 +168,7 @@ function HeadlineLine({ words, delay, color }: { words: string[]; delay: number;
                 initial={reduce ? { opacity: 0 } : { opacity: 0, y: '0.55em' }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  duration: reduce ? 0.35 : 0.9,
+                  duration: reduce ? 0.35 : 0.75,
                   ease: EASE_EXPO,
                   delay: wordDelay,
                 }}
@@ -204,7 +204,7 @@ function Hero() {
               <HeadlineLine
                 key={line.words.join(' ')}
                 words={line.words}
-                delay={0.12 + index * 0.15}
+                delay={0.1 + index * 0.16}
                 color={line.color}
               />
             ))}
