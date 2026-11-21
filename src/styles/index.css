@@ -293,6 +293,16 @@
     gap: 3px;
   }
 
+  /* The hero headline settles from a pale wash into its final ink or forest
+     while it rises, on the same expo curve and the same stagger. */
+  .headline-line {
+    color: var(--word-color);
+  }
+
+  .headline-word {
+    animation: headline-tint 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
   .ledger {
     width: 100%;
     border-collapse: collapse;
@@ -497,6 +507,15 @@
   }
 }
 
+@keyframes headline-tint {
+  from {
+    color: color-mix(in oklab, var(--word-color) 42%, var(--color-paper));
+  }
+  to {
+    color: var(--word-color);
+  }
+}
+
 @keyframes tick-in {
   from {
     opacity: 0.25;
@@ -534,7 +553,8 @@
   }
 
   .float-slow,
-  .survey-grid {
+  .survey-grid,
+  .headline-word {
     animation: none;
   }
 }

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { SchemeWindow } from '../components/SchemeWindow';
@@ -145,35 +146,39 @@ function SiteHeader() {
  * clip, and each word rises into place a beat after the one before, so the
  * sentence reads itself out instead of arriving all at once.
  */
-const HEADLINE_LINES: { words: string[]; className?: string }[] = [
-  { words: ['Plots', 'at', 'Gidan', 'Daya,'] },
-  { words: ['priced', 'by', 'the'], className: 'text-forest' },
-  { words: ['square', 'metre.'], className: 'text-forest' },
+const HEADLINE_LINES: { words: string[]; color: string }[] = [
+  { words: ['Plots', 'at', 'Gidan', 'Daya,'], color: 'var(--color-ink)' },
+  { words: ['priced', 'by', 'the'], color: 'var(--color-forest)' },
+  { words: ['square', 'metre.'], color: 'var(--color-forest)' },
 ];
 
-function HeadlineLine({ words, delay, className = '' }: { words: string[]; delay: number; className?: string }) {
+function HeadlineLine({ words, delay, color }: { words: string[]; delay: number; color: string }) {
   const reduce = useReducedMotion();
 
   return (
     <span aria-hidden className="block overflow-hidden pt-[0.06em] -mt-[0.06em] pb-[0.18em] -mb-[0.18em]">
-      <span className={`block ${className}`}>
-        {words.map((word, index) => (
-          <span key={`${word}-${index}`}>
-            <motion.span
-              className="inline-block"
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: '0.55em' }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: reduce ? 0.35 : 0.9,
-                ease: EASE_EXPO,
-                delay: reduce ? 0 : delay + index * 0.065,
-              }}
-            >
-              {word}
-            </motion.span>
-            {index < words.length - 1 ? ' ' : null}
-          </span>
-        ))}
+      <span className="headline-line block" style={{ '--word-color': color } as CSSProperties}>
+        {words.map((word, index) => {
+          const wordDelay = reduce ? 0 : delay + index * 0.065;
+          return (
+            <span key={`${word}-${index}`}>
+              <motion.span
+                className="headline-word inline-block"
+                style={{ animationDelay: `${wordDelay}s` }}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: '0.55em' }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: reduce ? 0.35 : 0.9,
+                  ease: EASE_EXPO,
+                  delay: wordDelay,
+                }}
+              >
+                {word}
+              </motion.span>
+              {index < words.length - 1 ? ' ' : null}
+            </span>
+          );
+        })}
       </span>
     </span>
   );
@@ -200,7 +205,7 @@ function Hero() {
                 key={line.words.join(' ')}
                 words={line.words}
                 delay={0.12 + index * 0.15}
-                className={line.className}
+                color={line.color}
               />
             ))}
           </h1>
