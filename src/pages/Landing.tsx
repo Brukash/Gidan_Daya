@@ -12,7 +12,6 @@ import { allocationPercent, describeTier, schemeTotals } from '../lib/allocation
 import { formatDate, formatNaira, formatSqm } from '../lib/format';
 import { dataMode } from '../lib/supabase';
 import {
-  AnimatedNumber,
   EASE_EXPO,
   EASE_OUT,
   Reveal,
@@ -266,9 +265,9 @@ function SubscriptionsBanner() {
             {dataMode === 'sample' ? ' · sample data' : ''}
           </p>
           <p className="num mt-1.5 flex items-baseline gap-2 font-display text-[1.7rem] leading-none text-paper">
-            <AnimatedNumber value={totals.allocated} />
+            {totals.allocated}
             <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-paper/60">
-              plots taken
+              {totals.allocated === 1 ? 'plot taken' : 'plots taken'}
             </span>
           </p>
         </div>
@@ -277,9 +276,7 @@ function SubscriptionsBanner() {
           {tiers.map((tier) => (
             <li key={tier.id} className="border-l border-paper/20 pl-3 first:border-l-0 first:pl-0 sm:border-l">
               <p className="text-[0.625rem] uppercase tracking-[0.09em] text-paper/55">{formatSqm(tier.sizeSqm)}</p>
-              <p className="num mt-0.5 text-sm font-semibold text-paper">
-                <AnimatedNumber value={tier.allocated} />
-              </p>
+              <p className="num mt-0.5 text-sm font-semibold text-paper">{tier.allocated}</p>
             </li>
           ))}
         </ul>
